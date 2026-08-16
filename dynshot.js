@@ -18,7 +18,7 @@
  *  dynshot · 通用 DOM 卡片截图（Tampermonkey 版）
  *  =====================================================
  *  引擎：SnapDOM （MIT，zumerlab/snapdom）——内嵌，无 CDN/无网络依赖
- *  逻辑：sites.js 适配器 + content.js 通用核心（opus 详情页跳转 t.bilibili.com 截图）
+ *  逻辑：sites.js 适配器 + content.js 通用核心（多图重排 + opus 详情页跳转 t.bilibili.com 截图）
  *  安装：Tampermonkey → 新建脚本 → 粘贴保存（或直接拖入本 .user.js 文件）
  *  移植新网站：在下方 SITES 数组追加适配器对象 + 修改顶部 @match
  */
@@ -110,6 +110,18 @@ const SITES = [
       '.bs-btn'
     ],
 
+    // 多图重排（参考 bili2tieba snapshot._REFLOW_GALLERY_JS）：
+    // 横向滑动图集（gallery）截图时只露出首图，其余被裁掉；
+    // 截图前将 gallery 重排为 N 列网格矩阵（所有图片平铺），截后完整还原。
+    // gallerySel 必填；columns/gap/maxWidth/stripParams 可选（缺省 3 列 / 6px / 540px / 去 @ 参数）。
+    reflow: {
+      gallerySel: '.bili-dyn-gallery', // 横向滑动画廊容器选择器（卡片内查找）
+      columns: 3,                      // 重排列数
+      gap: 6,                          // 网格间距（px）
+      maxWidth: 540,                   // 网格最大宽度（px）
+      stripParams: true                // true = 去掉图片 URL '@' 后的 CDN 压缩参数，取原图
+    },
+
     // 底部留白 = 容器上界 → 头像容器顶部的距离（即本函数返回值，核心不再放大；
     // 0/负值会被核心收敛到保底下边界（10px）；返回 null/抛异常时核心走 paddingRef / bottomPadding 兜底链；
     // 结果统一按 [minBottomPadding, maxBottomPadding] 上下边界收敛）
@@ -154,6 +166,7 @@ const SITES = [
   //   filePrefix: 'tb_',
   //   autoParams: [],
   //   shotRedirect: null       // （可选）返回跳转截图 URL（如 opus 页 → t.bilibili.com）；返回 null 就地在当前页截图
+  //   reflow: null             // （可选）多图重排：{ gallerySel, columns, gap, maxWidth, stripParams }，见 B站示例
   // }
 ];
 
@@ -173,7 +186,8 @@ const CFG = {
   bottomPadding: 40,         // 底部留白最终兜底值（px）
   minBottomPadding: 10,      // 底部留白下边界（px）：动态结果小于此值时保底抬升，保证始终有可见留白
   maxBottomPadding: 40,      // 底部留白上边界（px）：动态结果大于此值时压回，防止异常 DOM 导致留白过大
-  showCornerBtn: false       // true = 额外显示右上角 📸 按钮（菜单注入失败兜底）
+  showCornerBtn: false,      // true = 额外显示右上角 📸 按钮（菜单注入失败兜底）
+  reflow: true               // 多图重排总开关（适配器声明 site.reflow 才生效；B站横向图集 → 网格）
 };
 
 const site = getActiveSite();
@@ -312,6 +326,58 @@ function main() {
     };
   }
 
+  // ---------- 多图重排（参考 bili2tieba snapshot._REFLOW_GALLERY_JS） ----------
+  // 卡片内横向滑动图集（如 B站 .bili-dyn-gallery）截图时只露出首张图，其余被裁掉；
+  // 截图前把 gallery 重排为 N 列网格矩阵（所有图片平铺），截后完整还原。
+  // 适配器声明 site.reflow 即启用；gallerySel 必填，columns/gap/maxWidth/stripParams 可选。
+  // 页面变更集中在最后两步（隐藏 gallery + 插入网格），中途异常不留半成品 DOM。
+  function applyReflow(el) {
+    const r = site.reflow;
+    if (CFG.reflow === false || !r || !r.gallerySel) return null;
+    let gallery = null, grid = null, prevDisplay = '';
+    try {
+      gallery = el.querySelector(r.gallerySel);
+      if (!gallery || !gallery.parentNode) return null;
+      const urls = [...gallery.querySelectorAll('img')].map(img => {
+        const s = img.currentSrc || img.src || '';
+        return (r.stripParams === false) ? s : s.split('@')[0];
+      }).filter(Boolean);
+      if (urls.length < 2) return null;   // 单图/无图无需重排
+      grid = document.createElement('div');
+      grid.className = 'bs-reflow-grid';
+      grid.style.cssText = 'display:grid;' +
+        'grid-template-columns:repeat(' + (r.columns || 3) + ',1fr);' +
+        'gap:' + (r.gap || 6) + 'px;' +
+        'width:100%;max-width:' + (r.maxWidth || 540) + 'px;' +
+        'margin-top:10px;';
+      urls.forEach(u => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'aspect-ratio:1/1;overflow:hidden;border-radius:6px;background:#f1f2f3;';
+        const img = document.createElement('img');
+        img.src = u;
+        img.loading = 'eager';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        cell.appendChild(img);
+        grid.appendChild(cell);
+      });
+      prevDisplay = gallery.style.display;
+      gallery.style.display = 'none';
+      gallery.parentNode.insertBefore(grid, gallery.nextSibling);
+      return {
+        grid, count: urls.length,
+        cleanup: () => {
+          grid.remove();
+          gallery.style.display = prevDisplay || '';
+        }
+      };
+    } catch (e) {
+      console.warn('[dynshot] 多图重排失败，已跳过', e);
+      if (grid && grid.parentNode) { try { grid.remove(); } catch (e2) { /* 忽略 */ } }
+      if (gallery && prevDisplay) { try { gallery.style.display = prevDisplay || ''; } catch (e2) { /* 忽略 */ } }
+      return null;
+    }
+  }
+
   // ---------- 截图主流程（不滚动页面） ----------
   async function shotTarget(el, id) {
     if (window.__dsBusy) { toast('已有截图进行中，请稍候', 'info', 1500); return; }
@@ -319,7 +385,8 @@ function main() {
     window.__dsBusy = true;
     el._busy = true;
     const t0 = performance.now();
-    let padCtx = null;   // 底部留白上下文（可能为包装器）
+    let padCtx = null;    // 底部留白上下文（可能为包装器）
+    let reflowCtx = null; // 多图重排上下文
     try {
       console.info('[dynshot] ▶ 开始截图 id=' + id);
 
@@ -331,6 +398,11 @@ function main() {
           if (lazy && !img.getAttribute('src')) img.setAttribute('src', lazy);
         } catch (e) { /* 忽略 */ }
       });
+
+      // 多图重排：横向滑动图集 → N 列网格矩阵（在懒加载触发之后读取图片地址，截后还原）
+      reflowCtx = applyReflow(el);
+      if (reflowCtx) console.info('[dynshot] 多图重排：' + reflowCtx.count + ' 张图片已平铺为网格');
+
       await sleep(CFG.waitMs);
 
       // 底部留白（动态计算 + 应用 + 验证）
@@ -359,6 +431,7 @@ function main() {
       toast('截图失败：' + (e.message || e), 'error', 4000);
     } finally {
       if (padCtx && typeof padCtx.cleanup === 'function') padCtx.cleanup();
+      if (reflowCtx && typeof reflowCtx.cleanup === 'function') reflowCtx.cleanup();
       el._busy = false;
       window.__dsBusy = false;
     }
@@ -520,7 +593,7 @@ function main() {
             console.warn('[dynshot] 菜单注入失败，已启用右上角按钮兜底');
             toast('菜单注入失败，已启用右上角按钮', 'info', 2500);
           }
-        }, 900);
+        }, 1200);
       }
     }, true);
   }
@@ -534,7 +607,7 @@ function main() {
         if (site.inject !== 'menu' || CFG.showCornerBtn) addCornerBtn(el);
       });
     };
-    setTimeout(scan, 800);
+    setTimeout(scan, 300);
 
     // 单个全局 observer，100ms 节流合并（替代每卡片 observer + 高频扫描）
     const root = (site.feedContainerSel && document.querySelector(site.feedContainerSel)) || document.body;
@@ -550,7 +623,20 @@ function main() {
       setTimeout(flush, 100);
     }).observe(root, { childList: true, subtree: true });
 
-    // 点击"更多"→ 更新 lastTarget + 触发注入
+    // 菜单浮层多为点击后异步渲染（常出现在 body 下，observer 观察不到），
+    // 点击"更多"后立即注入一次 + 轮询重试 ~1s，避免单次注入扑空后干等 15s 低频兜底
+    let injectTimer = null;
+    const pollInject = (times, delay) => {
+      clearInterval(injectTimer);
+      let tries = 0;
+      injectTimer = setInterval(() => {
+        injectAnywhere();
+        tries++;
+        if (tries >= times) { clearInterval(injectTimer); injectTimer = null; }
+      }, delay);
+    };
+
+    // 点击"更多"→ 更新 lastTarget + 立即注入 + 轮询重试
     document.addEventListener('click', e => {
       const more = e.target.closest(site.menuPanelSel) ||
         (site.cascaderOptionsSel && e.target.closest(site.cascaderOptionsSel)) ||
@@ -558,7 +644,8 @@ function main() {
       if (more) {
         const c = more.closest ? more.closest(site.targetSel) : null;
         if (c) lastTarget = c;
-        setTimeout(() => injectAnywhere(), 100);
+        injectAnywhere();   // 浮层已渲染时零延迟注入
+        pollInject(9, 100); // 未渲染则轮询重试（约 0.9s 窗口）
       }
     }, true);
 

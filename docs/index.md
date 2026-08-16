@@ -1,6 +1,6 @@
 # dynshot 文档
 
-> 项目：dynshot（通用 DOM 卡片截图）· 当前版本 v0.0.1（通用核心 + 站点适配器架构，性能版；opus 详情页跳转 t.bilibili.com 截图）
+> 项目：dynshot（通用 DOM 卡片截图）· 当前版本 v0.0.1（通用核心 + 站点适配器架构，性能版；多图重排 + opus 详情页跳转 t.bilibili.com 截图）
 > 安装与使用见仓库根目录 [README](../README.md)。
 
 ---
@@ -9,7 +9,7 @@
 
 | 文档 | 内容 |
 |------|------|
-| [architecture.md](architecture.md) | 架构：适配器模式 + 核心逻辑（注入 / 截图 / opus 跳转）三段式，含踩坑总结 |
+| [architecture.md](architecture.md) | 架构：适配器模式 + 核心逻辑（注入 / 截图 / 多图重排 / opus 跳转）三段式，含踩坑总结 |
 | [adapters.md](adapters.md) | 移植新网站：适配器接口速查、三步操作、无「更多」菜单方案 |
 | [design.md](design.md) | 通用设计原则与已知限制 |
 

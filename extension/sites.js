@@ -63,6 +63,18 @@ const SITES = [
       '.bs-btn'
     ],
 
+    // 多图重排（参考 bili2tieba snapshot._REFLOW_GALLERY_JS）：
+    // 横向滑动图集（gallery）截图时只露出首图，其余被裁掉；
+    // 截图前将 gallery 重排为 N 列网格矩阵（所有图片平铺），截后完整还原。
+    // gallerySel 必填；columns/gap/maxWidth/stripParams 可选（缺省 3 列 / 6px / 540px / 去 @ 参数）。
+    reflow: {
+      gallerySel: '.bili-dyn-gallery', // 横向滑动画廊容器选择器（卡片内查找）
+      columns: 3,                      // 重排列数
+      gap: 6,                          // 网格间距（px）
+      maxWidth: 540,                   // 网格最大宽度（px）
+      stripParams: true                // true = 去掉图片 URL '@' 后的 CDN 压缩参数，取原图
+    },
+
     // 底部留白 = 容器上界 → 头像容器顶部的距离（即本函数返回值，核心不再放大；
     // 0/负值会被核心收敛到保底下边界（10px）；返回 null/抛异常时核心走 paddingRef / bottomPadding 兜底链；
     // 结果统一按 [minBottomPadding, maxBottomPadding] 上下边界收敛）
@@ -107,6 +119,7 @@ const SITES = [
   //   filePrefix: 'tb_',
   //   autoParams: [],
   //   shotRedirect: null       // （可选）返回跳转截图 URL（如 opus 页 → t.bilibili.com）；返回 null 就地在当前页截图
+  //   reflow: null             // （可选）多图重排：{ gallerySel, columns, gap, maxWidth, stripParams }，见 B站示例
   // }
 ];
 

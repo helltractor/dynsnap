@@ -5,10 +5,33 @@ const path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '..', 'extension', 'content.js'), 'utf8');
 
 function extractFn(name) {
-  const re = new RegExp('function ' + name + '\\([\\s\\S]*?\\n  \\}');
-  const m = src.match(re);
-  if (!m) throw new Error('cannot extract ' + name);
-  return m[0];
+  const head = 'function ' + name + '(';
+  const start = src.indexOf(head);
+  if (start < 0) throw new Error('cannot extract ' + name);
+  let i = src.indexOf('{', start);
+  if (i < 0) throw new Error('cannot extract ' + name);
+  let depth = 0;
+  let quote = null;        // null | ' | " | `
+  let tplDepth = 0;        // 模板字符串内 ${} 嵌套深度
+  let lineComment = false, blockComment = false;
+  for (; i < src.length; i++) {
+    const ch = src[i], next = src[i + 1];
+    if (lineComment) { if (ch === '\n') lineComment = false; continue; }
+    if (blockComment) { if (ch === '*' && next === '/') { blockComment = false; i++; } continue; }
+    if (quote) {
+      if (ch === '\\') { i++; continue; }
+      if (quote === '`' && ch === '$' && next === '{') { tplDepth++; continue; }
+      if (quote === '`' && ch === '}' && tplDepth > 0) { tplDepth--; continue; }
+      if (ch === quote && tplDepth === 0) quote = null;
+      continue;
+    }
+    if (ch === '/' && next === '/') { lineComment = true; i++; continue; }
+    if (ch === '/' && next === '*') { blockComment = true; i++; continue; }
+    if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) return src.slice(start, i + 1); }
+  }
+  throw new Error('cannot extract ' + name);
 }
 
 let pass = 0, fail = 0;
@@ -153,6 +176,107 @@ console.log('applyBottomPadding 测试：');
   const orphan = { offsetWidth: 600, parentNode: null, style: { paddingBottom: '', margin: '', marginTop: '', marginRight: '', marginBottom: '', marginLeft: '' } };
   const ctx = runApply(orphan, 16, env);
   eq(ctx, null, '包装器失败时返回 null（不抛错）');
+}
+
+// ---------- applyReflow 测试（多图重排，移植自 bili2tieba snapshot._REFLOW_GALLERY_JS） ----------
+const reflowSrc = extractFn('applyReflow');
+
+function makeReflowEnv({ galleryImgs = 3, hasGallery = true } = {}) {
+  const node = (tag) => ({
+    tagName: tag, style: {}, children: [], parentNode: null, nextSibling: null,
+    className: '', remove() { if (this.parentNode && this.parentNode.removeChild) this.parentNode.removeChild(this); }
+  });
+  const detach = (n) => {
+    if (n.parentNode && n.parentNode.children) {
+      const i = n.parentNode.children.indexOf(n);
+      if (i >= 0) n.parentNode.children.splice(i, 1);
+    }
+    n.parentNode = null;
+  };
+  const parent = node('div');
+  parent.insertBefore = (n, ref) => {
+    detach(n);
+    n.parentNode = parent;
+    if (ref) {
+      const idx = parent.children.indexOf(ref);
+      parent.children.splice(idx >= 0 ? idx : parent.children.length, 0, n);
+    } else parent.children.push(n);
+  };
+  parent.removeChild = (n) => { detach(n); };
+  const gallery = node('div');
+  const imgs = [];
+  for (let k = 0; k < galleryImgs; k++) {
+    const img = node('img');
+    img.currentSrc = 'https://i0.hdslb.com/bfs/dyn/abc' + k + '@123w_123h.webp';
+    img.src = '';
+    imgs.push(img);
+    gallery.children.push(img);
+    img.parentNode = gallery;
+  }
+  gallery.querySelectorAll = (sel) => (sel === 'img') ? imgs.slice() : [];
+  gallery.parentNode = parent;
+  parent.children.push(gallery);
+  const el = node('div');
+  el.querySelector = (sel) => (hasGallery && sel === '.bili-dyn-gallery') ? gallery : null;
+  const doc = {
+    createElement: () => {
+      const n = node('div');
+      n.appendChild = (child) => { detach(child); child.parentNode = n; n.children.push(child); };
+      n.remove = () => { if (n.parentNode && n.parentNode.removeChild) n.parentNode.removeChild(n); };
+      return n;
+    }
+  };
+  return { el, gallery, parent, doc };
+}
+
+function runReflow(env, siteReflow, cfgReflow) {
+  const site = { reflow: siteReflow };
+  const CFG = { reflow: cfgReflow !== undefined ? cfgReflow : true };
+  const body = reflowSrc + '\nreturn applyReflow;';
+  const fn = new Function('site', 'CFG', 'document', body);
+  return fn(site, CFG, env.doc)(env.el);
+}
+
+console.log('applyReflow 测试（多图重排）：');
+{
+  const env = makeReflowEnv({});
+  const ctx = runReflow(env, { gallerySel: '.bili-dyn-gallery', columns: 3 });
+  ok(!!ctx, '3 图时返回重排上下文');
+  eq(env.gallery.style.display, 'none', '原 gallery 已隐藏');
+  eq(env.parent.children.length, 2, '网格已插入父容器（gallery + grid）');
+  eq(env.parent.children[1].children.length, 3, '网格包含 3 个单元格');
+  const firstImg = env.parent.children[1].children[0].children[0];
+  eq(firstImg.src, 'https://i0.hdslb.com/bfs/dyn/abc0', '图片 URL 去掉 @ 后 CDN 压缩参数（取原图）');
+  eq(firstImg.loading, 'eager', '网格图片 eager 加载');
+  ctx.cleanup();
+  eq(env.gallery.style.display, '', 'cleanup 后 gallery 恢复原 display');
+  eq(env.parent.children.length, 1, 'cleanup 后网格已移除');
+}
+{
+  const env = makeReflowEnv({});
+  eq(runReflow(env, null), null, '适配器未声明 reflow 时跳过');
+  eq(runReflow(env, { gallerySel: '.bili-dyn-gallery' }, false), null, 'CFG.reflow=false 总开关关闭时跳过');
+}
+{
+  const env = makeReflowEnv({ hasGallery: false });
+  eq(runReflow(env, { gallerySel: '.bili-dyn-gallery' }), null, '卡片内无 gallery 时跳过');
+}
+{
+  const env = makeReflowEnv({ galleryImgs: 1 });
+  eq(runReflow(env, { gallerySel: '.bili-dyn-gallery' }), null, '单图不重排');
+}
+{
+  const env = makeReflowEnv({});
+  const ctx = runReflow(env, { gallerySel: '.bili-dyn-gallery', columns: 2, gap: 10, stripParams: false });
+  ok(!!ctx, '自定义 columns/gap/stripParams 生效');
+  ok(env.parent.children[1].style.cssText.indexOf('repeat(2,1fr)') >= 0, '列数使用配置值 2');
+  ok(env.parent.children[1].style.cssText.indexOf('gap:10px') >= 0, '间距使用配置值 10px');
+  const firstImg = env.parent.children[1].children[0].children[0];
+  eq(firstImg.src, 'https://i0.hdslb.com/bfs/dyn/abc0@123w_123h.webp', 'stripParams=false 保留完整 URL');
+}
+{
+  const env = makeReflowEnv({});
+  eq(runReflow(env, { gallerySel: '.bili-dyn-gallery' }, true).count, 3, '返回 count = 图片数量');
 }
 
 console.log('');

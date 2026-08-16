@@ -19,4 +19,5 @@
 - 跨域图片需目标网站图床支持 CORS（SnapDOM 依赖 canvas 读取像素）
 - `reconcile: true` 约双倍捕获时间
 - 视频卡片截到的是暂停帧/封面
+- 多图重排仅作用于适配器声明的横向滑动图集（如 B站 `.bili-dyn-gallery`）；重排网格图片为 `object-fit: cover` 方形缩略，与滑动画廊视觉不同
 - opus 详情页依赖 `t.bilibili.com/{did}` 旧版动态页可用（ 跳转式截图的前提）；若 B 站下线旧版页，需回退到就地截图或自渲染方案

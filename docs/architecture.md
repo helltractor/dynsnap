@@ -33,6 +33,7 @@ sites.js（数据）           content.js（逻辑）
 | `paddingRatio` | number | 参考元素高度比例系数（默认 1，B站 0.6） |
 | `didOf(el)` | fn | 从元素/URL 提取帖子 ID |
 | `shotRedirect(el)` | fn | （可选）返回跳转截图 URL；返回 null 就地在当前页截图（如 B 站 opus 页 → `t.bilibili.com/{did}?bshot=1`） |
+| `reflow` | object | （可选）多图重排：`{ gallerySel, columns, gap, maxWidth, stripParams }`（gallerySel 必填）；截图前把横向滑动图集重排为 N 列网格，截后还原 |
 | `exclude` | string[] | 截图时排除的元素 |
 | `inject` | 'menu'\|'corner'\|'both' | 注入形态 |
 | `menuText` | string | 注入的菜单项文字 |
@@ -85,6 +86,25 @@ snapdom.download(card, {
   reconcile: CFG.reconcile // 像素级精确布局（防字体回退文本重排）
 });
 ```
+
+**多图重排（参考 bili2tieba snapshot._REFLOW_GALLERY_JS）**：
+
+横向滑动图集（如 B站 `.bili-dyn-gallery`）在静态截图里只露出首张图，其余被裁掉。
+截图前核心会按适配器 `reflow` 配置把 gallery 重排为 N 列网格矩阵（所有图片平铺），截后完整还原：
+
+```
+shotTarget 流程：
+① 懒加载图片触发（不滚动页面）
+② applyReflow(el)：收集 gallery 内图片 URL（默认去掉 '@' 后 CDN 压缩参数取原图）
+   → 隐藏 gallery → 插入 N 列网格（aspect-ratio 1:1、object-fit: cover、eager 加载）
+   → 返回 { count, cleanup }（少于 2 图 / 无 gallery / CFG.reflow=false 时跳过）
+③ 等待图片加载（waitMs）→ 底部留白（paddingFn 链）→ SnapDOM 捕获
+④ finally：先还原留白（含包装器），再移除网格、恢复 gallery display
+```
+
+- 按**卡片内查找**（`el.querySelector`）而非全局查找：瀑布流多卡片互不干扰（比 bili2tieba 的全局查找更严谨）。
+- 页面变更集中在最后两步，中途异常不残留半成品 DOM（try/catch + 局部还原）。
+- 自定义列数 / 间距 / 宽度 / 是否去压缩参数：`reflow.columns / gap / maxWidth / stripParams`。
 
 ### 2.3 opus 详情页跳转截图
 

@@ -21,7 +21,7 @@
 | `didOf` | 帖子元素上的 data 属性；或从 URL 正则提取 |
 | `exclude` | 截图时不想出现的浮层/角标类名 |
 
-> 完整字段表（`test` / `targetSel` / `feedContainerSel` / `menuPanelSel` / `cascaderOptionsSel` / `menuItemClassRe` / `moreBtnRe` / `paddingFn` / `paddingRef` / `paddingRatio` / `didOf` / `shotRedirect` / `exclude` / `inject` / `menuText` / `filePrefix` / `autoParams`）见 [architecture.md](architecture.md)。
+> 完整字段表（`test` / `targetSel` / `feedContainerSel` / `menuPanelSel` / `cascaderOptionsSel` / `menuItemClassRe` / `moreBtnRe` / `paddingFn` / `paddingRef` / `paddingRatio` / `didOf` / `shotRedirect` / `reflow` / `exclude` / `inject` / `menuText` / `filePrefix` / `autoParams`）见 [architecture.md](architecture.md)。
 
 ## 三、无"更多"菜单的网站
 
@@ -47,5 +47,6 @@
   filePrefix: 'tb_',
   autoParams: [],
   shotRedirect: null            // （可选）返回跳转截图 URL；返回 null 就地在当前页截图
+  reflow: null                  // （可选）多图重排：{ gallerySel, columns, gap, maxWidth, stripParams }，见 B站示例
 }
 ```
