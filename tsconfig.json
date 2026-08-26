@@ -10,7 +10,7 @@
     "baseUrl": ".",
     "paths": {
       "@dynshot/src/*": ["src/*"],
-      "@/*": ["../Bilibili-Evolved/src/*"]
+      "@/*": ["../../Bilibili-Evolved/src/*"]
     }
   },
   "include": ["src"]

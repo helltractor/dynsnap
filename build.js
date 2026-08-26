@@ -4,7 +4,7 @@ const nodePath = require('path')
 const { createRequire } = require('module')
 
 const projectRoot = __dirname
-const beRoot = process.env.BILI_EVOLVED_PATH || nodePath.resolve(projectRoot, '..', 'Bilibili-Evolved')
+const beRoot = process.env.BILI_EVOLVED_PATH || nodePath.resolve(projectRoot, '..', '..', 'Bilibili-Evolved')
 const srcDir = nodePath.join(projectRoot, 'src')
 // 官方 description 注入只处理 BE registry 下的 index.ts,
 // 因此构建时把 src 临时同步到 BE 仓库 registry/lib/components/feeds/dynshot, 构建后清理。

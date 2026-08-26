@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.0.4（修复截图产物为假 PNG）
+
+- 修复截图功能失效：snapdom.toBlob() 默认输出 SVG（image/svg+xml），
+  snapdom.toPng() 返回的是 HTMLImageElement，直接下载会得到「扩展名 .png 内容却是 SVG」的假 PNG，图片无法打开。
+- src/engine.ts 改用 snapdom.toCanvas() 渲染 + canvas.toBlob('image/png') 导出，
+  产物为真正的 PNG（已用无头 Edge 端到端验证：image/png、PNG 魔数 89 50 4E 47）。
+
 ## v0.0.3（构建修复）
 
 - 修复构建失败：不再通过 `pnpm tsx` 运行构建（pnpm 10+ 不再支持 `pnpm tsx` 子命令），

@@ -4,7 +4,7 @@ import { useScopedConsole } from '@/core/utils/log'
 import snapdomModule, { preCache as preCacheModule } from './snapdom'
 
 const snapdom = snapdomModule as unknown as {
-  toBlob: (element: HTMLElement, options?: Record<string, unknown>) => Promise<Blob>
+  toCanvas: (element: HTMLElement, options?: Record<string, unknown>) => Promise<HTMLCanvasElement>
 }
 const preCache = preCacheModule as unknown as (element?: HTMLElement | Document) => Promise<void>
 
@@ -31,12 +31,18 @@ export const captureElement = async (element: HTMLElement, id: string) => {
   const toast = Toast.info('正在截图...', componentName)
   try {
     await preCache(element)
-    const blob = await snapdom.toBlob(element, {
+    // 注意: snapdom.toBlob() 默认输出 SVG (image/svg+xml), toPng() 返回 HTMLImageElement,
+    // 直接下载会得到“假 PNG”。正确做法: toCanvas() 渲染后由 canvas.toBlob 导出真正的 PNG。
+    const canvas = await snapdom.toCanvas(element, {
       scale: maxSide > 12000 ? 1 : 2,
       dpr: 1,
       backgroundColor: '#ffffff',
       reconcile: true,
     })
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) {
+      throw new Error('canvas.toBlob 导出失败')
+    }
     await DownloadPackage.single(`${id}_${Date.now()}.png`, blob)
     Toast.success('截图已保存', componentName)
   } catch (error) {
