@@ -1,102 +1,70 @@
-# dynshot · 通用 DOM 卡片截图
+# dynshot · Bilibili-Evolved 组件（动态与评论截图）
 
-基于 **SnapDOM 开源引擎**（MIT，[zumerlab/snapdom](https://github.com/zumerlab/snapdom)）的通用网页卡片截图扩展：
-为任意论坛网站的帖子/动态卡片注入「截图」入口，一键截取 **高清、内容原样** 的 PNG。
+在 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 中通过组件方式引入的截图功能:
 
-**当前版本 v0.0.1（通用核心 + 站点适配器架构，性能版）**，内置 B站动态适配器（多图重排 + opus 详情页自动跳转 t.bilibili.com 截图）。
+- **动态卡片截图**：每条动态的「更多」菜单中提供「截图动态」，一键将动态卡片截为高清 PNG
+- **评论截图**：视频 / 专栏 / 动态详情等页面的每条评论（含回复）菜单中提供「截图评论」
+- **评论区整块截图**：评论区顶部提供「截图评论区」按钮，整块截图当前已加载的评论区
+
+截图引擎使用 [SnapDOM](https://github.com/zumerlab/snapdom) v2.24.1（MIT），本地打包、零网络依赖。
 
 ---
 
-## ✨ 功能
-
-- **📸 入口注入「更多」菜单**：所有存在「更多」菜单的页面自动注入「截图动态」
-- **🖼️ 多图重排**：横向滑动图集（如 B站 `.bili-dyn-gallery`）截图前自动重排为网格，所有图片平铺可见、不漏图（参考 bili2tieba snapshot）
-- **就地截图，内容原样**：不跳转、不改动容器内容，按元素边界输出
-- **元素级捕获**：无坐标/DPR/白边问题，`reconcile` 像素级精确布局
-- **底部留白**：默认 40px，图片更美观
-- **🔌 站点适配器架构**：换网站只加一个配置对象（`sites.js`），核心零改动
-
-## 📦 安装（两种方式任选）
-
-### 方式 A：Tampermonkey 油猴脚本（推荐，零权限）
-1. 浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)
-2. 把 `dynshot.user.js` **拖入** Tampermonkey 面板（或新建脚本粘贴代码）
-3. 打开 B站动态页，点卡片 `···` 菜单即可看到「截图动态」
-
-> 油猴版 = 扩展版同一代码打包（SnapDOM 引擎内嵌 155KB，无 CDN/无网络依赖，`@grant none`）
-
-### 方式 B：Chrome 扩展（开发者模式）
-1. 打开浏览器扩展页：Chrome 输入 `chrome://extensions`，Edge 输入 `edge://extensions`
-2. 打开右上角 **「开发者模式」**
-3. 点击 **「加载已解压的扩展程序」**，选择：
-   ```
-   dynshot/extension/
-   ```
-4. 打开 B站动态页，点卡片 `···` 菜单即可看到「截图动态」。
-
-## 🚀 使用
-
-1. 打开任意支持页面（B站动态瀑布流 / opus 详情页等）。
-2. 点击目标卡片右上角的 **···**（更多）菜单。
-3. 点击 **「截图动态」**：当前页面直接截图（底部自动留白）→ 下载 PNG。
-
-> **opus 详情页**：新版 opus 网页布局（代码/图片展示形式）已变动，就地截图不可靠 ——
-> 点击「截图动态」会自动跳转 `t.bilibili.com/{id}` 旧版动态详情页（经典卡片，布局稳定），
-> 截图完成后自动关闭。
-
-## ⚙️ 配置
-
-**通用配置**（`content.js` 顶部 `CFG`）：
-
-| 常量 | 默认 | 说明 |
-|------|------|------|
-| `scale` | 3 | 输出倍率（清晰度） |
-| `waitMs` | 600 | 图片加载等待上限（ms，不滚动页面） |
-| `reconcile` | true | SnapDOM 像素级精确布局（防文本重排；约双倍耗时） |
-| `bottomPadding` | 40 | 底部留白兜底值（px）；优先按适配器 `paddingFn`（如 B站：容器上界→头像顶部） |
-| `showCornerBtn` | false | true = 额外显示右上角 📸 按钮 |
-| `reflow` | true | 多图重排总开关（适配器声明 `reflow` 才生效，B站横向图集 → 网格） |
-
-**站点配置**（`sites.js` 每个适配器对象）：见文件内注释模板。
-
-## 🔌 移植新网站（3 分钟）
-
-在 `sites.js` 的 `SITES` 数组追加一个配置对象：
-
-```js
-{
-  id: 'tieba', name: '贴吧',
-  test: () => location.hostname === 'tieba.baidu.com',
-  targetSel: '.j_thread_list [class*="threadlist_title"]',
-  menuPanelSel: '...',            // F12 查"更多"菜单容器
-  menuItemClassRe: /.../,         // 菜单项类名关键词
-  didOf: el => el.getAttribute('data-tid') || (location.pathname.match(/\/p\/(\d+)/) || [])[1],
-  exclude: ['...'],
-  inject: 'menu',                 // 或 'corner'（无菜单时用右上角按钮）
-  menuText: '截图',
-  filePrefix: 'tb_',
-  autoParams: []
-}
-```
-
-再在 `manifest.json` 的 `matches` / `host_permissions` 加上该站域名即可。详见 [docs/index.md](docs/index.md)（适配器速查：[docs/adapters.md](docs/adapters.md)）。
-
-## 📁 目录结构
+## 目录结构（简单 `src` 布局，内部统一使用 `@dynshot/src` 别名）
 
 ```
 dynshot/
-├── dynshot.js           # ✅ Tampermonkey 油猴版（单文件，引擎内嵌）
-├── extension/                 # ✅ Chrome 扩展
-│   ├── manifest.json          # matches 列出各支持站点
-│   ├── snapdom.js             # SnapDOM （MIT 引擎，本地打包）
-│   ├── sites.js               # ★ 站点适配器注册表（换站只改这里）
-│   ├── content.js             # ★ 通用核心（与网站解耦）
-│   └── content.css
-├── README.md
-├── CHANGELOG.md
-└── docs/                      # 文档（总览 / 架构 / 适配器 / 设计）
+├── src/                    # 组件源码
+│   ├── index.ts            # 组件入口（defineComponentMetadata + entry）
+│   ├── engine.ts           # 截图与下载封装（SnapDOM）
+│   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
+│   └── index.md            # 组件描述（编译时自动注入）
+├── build.js                # 构建入口：node build.js
+├── build-webpack.ts        # webpack 构建脚本（复用 Bilibili-Evolved 工具链与 externals）
+├── dist/dynshot.js         # ★ 编译产物：单个组件 JS 文件（UMD，export: component）
+├── package.json
+├── tsconfig.json           # @dynshot/src 别名配置
+└── docs/
 ```
 
-## 📄 许可
+## 构建（编译输出 JS 文件）
 
-MIT（扩展本体）；截图引擎 [SnapDOM](https://github.com/zumerlab/snapdom) © Zumerlab，MIT。
+需要本机有一个 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 仓库
+（默认查找上级目录 `../Bilibili-Evolved`，也可用环境变量 `BILI_EVOLVED_PATH` 指定）：
+
+```powershell
+node build.js
+# 产物: dist/dynshot.js
+```
+
+构建脚本复用 Bilibili-Evolved 的 webpack 配置（babel/TS loader、description 注入、
+`@/core` / `@/components` 等 externals），产物与官方 dev-server 编译的组件格式一致。
+
+## 安装到 Bilibili-Evolved
+
+1. 将 `dist/dynshot.js` 放到任意可访问的静态服务器（如 `npx serve` 或 BE 仓库的 dist 目录）。
+2. 打开 b 站，进入脚本设置 → 组件管理，粘贴 JS 文件 URL 安装。
+3. 刷新后即可使用。
+
+> 也可将 `src/` 放入 Bilibili-Evolved 的 `registry/lib/components/feeds/dynshot/`，
+> 走官方「组件开发」流程（`build component feeds/dynshot`）编译调试。
+
+## 使用
+
+- **动态页 / 个人空间 / 动态详情**：点卡片右上角「···」→「截图动态」
+- **视频 / 专栏 / 动态详情的评论区**：点评论（或回复）右下角菜单 →「截图评论」
+- **视频 / 专栏 / 动态详情的评论区顶部**：「截图评论区」→ 整块截图当前评论区
+
+## 实现说明
+
+- 组件结构符合 [Bilibili-Evolved CONTRIBUTING.md](https://github.com/the1812/Bilibili-Evolved/blob/master/CONTRIBUTING.md) 的组件规范：
+  `index.ts` 导出 `component`（`defineComponentMetadata`），`index.md` 作为描述，入口按需 `import()`。
+- 内部模块统一通过 `@dynshot/src` 别名引用（`build-webpack.ts` 与 `tsconfig.json` 中配置）。
+- 动态卡片菜单参考 `registry/lib/components/feeds/copy-link`（`forEachFeedsCard` + `addMenuItem`）。
+- 评论菜单参考 `registry/lib/components/utils/comments/copy-link`（`forEachCommentItem` + `addMenuItem`，处理 `repliesUpdate`）。
+- 评论区顶部按钮参考 `registry/lib/components/utils/comments/image-export`（v1 / v2 / v3 评论区）。
+- 仅面向 B 站，无任何多网站适配器预设。
+
+## 许可
+
+MIT；截图引擎 [SnapDOM](https://github.com/zumerlab/snapdom) © Zumerlab，MIT。

@@ -1,123 +1,65 @@
-# 架构与核心逻辑
+# 架构与实现
 
-> [← 文档总览](index.md) · dynshot v0.0.1
----
+> [← 文档总览](index.md) · dynshot v1.0.0
 
-## 一、架构：适配器模式
+## 一、架构：简单 `src` 布局 + 编译产物
 
-```
-sites.js（数据）           content.js（逻辑）
-┌──────────────────┐      ┌──────────────────────────┐
-│ SITES[]          │      │ getActiveSite()          │
-│ ├─ bilibili      │ ───▶ │ site.targetSel  → 收集卡片 │
-│ └─ (新网站)       │      │ site.menuPanelSel→ 注入菜单│
-└──────────────────┘      │ site.didOf      → ID 提取 │
-                          │ site.exclude    → 截图排除│
-                          │ site.inject     → 注入形态│
-                          └──────────────────────────┘
-```
-
-**适配器接口**（每个网站一个对象）：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `test()` | fn | 当前 URL 是否本站 |
-| `targetSel` | string | 目标卡片 CSS 选择器（可逗号多选） |
-| `feedContainerSel` | string | observer 观察目标容器（缺省 body，如 B站 `.bili-dyn-list`） |
-| `menuPanelSel` | string | "更多"菜单面板选择器（卡片内查找） |
-| `cascaderOptionsSel` | string | 级联浮层选项容器（body 下渲染，出现时自动注入） |
-| `menuItemClassRe` | regex | 菜单项类名关键词（找样式参考项） |
-| `moreBtnRe` | regex | "更多"按钮类名关键词 |
-| `paddingFn(el)` | fn | 动态底部留白：返回「容器上界 → 头像顶部」距离（≥0 直接用） |
-| `paddingRef` | string | 留白参考元素选择器（头像找不到时按元素高度 × 比例兜底） |
-| `paddingRatio` | number | 参考元素高度比例系数（默认 1，B站 0.6） |
-| `didOf(el)` | fn | 从元素/URL 提取帖子 ID |
-| `shotRedirect(el)` | fn | （可选）返回跳转截图 URL；返回 null 就地在当前页截图（如 B 站 opus 页 → `t.bilibili.com/{did}?bshot=1`） |
-| `reflow` | object | （可选）多图重排：`{ gallerySel, columns, gap, maxWidth, stripParams }`（gallerySel 必填）；截图前把横向滑动图集重排为 N 列网格，截后还原 |
-| `exclude` | string[] | 截图时排除的元素 |
-| `inject` | 'menu'\|'corner'\|'both' | 注入形态 |
-| `menuText` | string | 注入的菜单项文字 |
-| `filePrefix` | string | 下载文件名前缀 |
-| `autoParams` | string[] | URL 含任一参数时自动截第一个目标 |
-
----
-
-## 二、核心逻辑（三段式）
+不再维护 Bilibili-Evolved 的 `registry/lib/components/...` 目录结构，项目本体只有两大部分：
 
 ```
-① 注入：全局单 observer(100ms 节流) → scan + injectAnywhere → 点击"更多"时动态绑定 lastTarget 注入
-② 截图：触发懒加载图片并等待(不滚动页面) → 底部留白(临时padding) → SnapDOM 捕获 → 下载 PNG
-③ 自动：URL 含 autoParams 任一参数 → 自动截第一个目标
+dynshot/
+├── src/                    # 组件源码（内部用 @dynshot/src 别名引用）
+│   ├── index.ts            # 组件入口：defineComponentMetadata + entry
+│   ├── index.md            # 组件描述（webpack 自动注入 description）
+│   ├── engine.ts           # 截图与下载封装（SnapDOM）
+│   └── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
+└── dist/dynshot.js         # ★ 编译产物：单个组件 JS（UMD，export: component）
 ```
 
-### 2.1 注入（最难、最值钱的部分）
-
-```js
-// 1) 初始化：全局单 MutationObserver（100ms 节流合并）+ 15s 低频兜底扫描（性能版）
-// 2) 注入双通道：卡片级 injectCardPanel（卡片内查面板）+ injectAnywhere 全局兜底
-//    面板查找：el.querySelector(site.menuPanelSel)；级联浮层走 cascaderOptionsSel（body 下）
-// 3) 菜单项创建（核心技巧）：
-//    a. 完整复制原生菜单项 className（含框架 scoped 类）
-//    b. 复制全部 data-* 属性（Vue scoped 样式生效的关键）
-//    c. 复制内联 style
-//    d. getComputedStyle 复制关键文本样式（保底，防样式链断裂）
-//    e. textContent 直接设置文字（保证显示）
-// 4) 动态绑定：点击"更多"时记录 lastTarget，点击「截图动态」取 lastTarget（注入一次，位置固定）
-// 5) 兜底：菜单注入失败 900ms 后自动挂右上角 📸 按钮
-```
-
-**踩坑总结**：
-
-| 坑 | 解决 |
-|----|------|
-| 菜单是 Vue scoped 渲染，手动创建样式不匹配 | 复制 `data-v-*` + className + 计算样式 |
-| 克隆原生项出现空白 | 手动创建 + 直接 textContent + 计算样式保底 |
-| 菜单浮层被截进图片 | `exclude` 排除全部菜单容器选择器 |
-| 点击菜单项后菜单不关闭 | 对"更多"按钮模拟 `mouseleave` |
-
-### 2.2 截图
-
-```js
-snapdom.download(card, {
-  scale: CFG.scale,      // 3，清晰度
-  dpr: 1,                // 与系统 DPR 解耦，杜绝白边/放大
-  exclude: site.exclude, // 排除菜单容器/角标
-  backgroundColor: '#fff',
-  reconcile: CFG.reconcile // 像素级精确布局（防字体回退文本重排）
-});
-```
-
-**多图重排（参考 bili2tieba snapshot._REFLOW_GALLERY_JS）**：
-
-横向滑动图集（如 B站 `.bili-dyn-gallery`）在静态截图里只露出首张图，其余被裁掉。
-截图前核心会按适配器 `reflow` 配置把 gallery 重排为 N 列网格矩阵（所有图片平铺），截后完整还原：
+构建链：
 
 ```
-shotTarget 流程：
-① 懒加载图片触发（不滚动页面）
-② applyReflow(el)：收集 gallery 内图片 URL（默认去掉 '@' 后 CDN 压缩参数取原图）
-   → 隐藏 gallery → 插入 N 列网格（aspect-ratio 1:1、object-fit: cover、eager 加载）
-   → 返回 { count, cleanup }（少于 2 图 / 无 gallery / CFG.reflow=false 时跳过）
-③ 等待图片加载（waitMs）→ 底部留白（paddingFn 链）→ SnapDOM 捕获
-④ finally：先还原留白（含包装器），再移除网格、恢复 gallery display
+node build.js
+  └─ build-webpack.ts（复用 Bilibili-Evolved 的 webpack 配置）
+       ├─ babel/TS loader + description 注入
+       ├─ @dynshot/src 别名 → 本项目 src/
+       └─ @/core、@/components 等 externals → 运行时由脚本本体提供
+       └─ 输出 dist/dynshot.js
 ```
 
-- 按**卡片内查找**（`el.querySelector`）而非全局查找：瀑布流多卡片互不干扰（比 bili2tieba 的全局查找更严谨）。
-- 页面变更集中在最后两步，中途异常不残留半成品 DOM（try/catch + 局部还原）。
-- 自定义列数 / 间距 / 宽度 / 是否去压缩参数：`reflow.columns / gap / maxWidth / stripParams`。
+Bilibili-Evolved 组件产物不打包核心 API：`@/core/*`、`@/components/*`、`@/plugins/*`、
+`@/ui` 在构建时被声明为 externals，运行时直接读取脚本本体挂载的
+`coreApis.componentApis.*` / `coreApis.core.*` 全局对象。因此编译产物是一个依赖
+Bilibili-Evolved 运行时的轻量组件 JS，可在组件管理中直接安装。
 
-### 2.3 opus 详情页跳转截图
+## 二、功能流程
 
-新版 opus 网页布局（代码/图片展示形式）变动，就地截图不可靠，B 站适配器改用**跳转式截图**：
+### 动态卡片截图
 
-```
-opus 页点击「截图动态」→ shotRedirect 返回 t.bilibili.com/{did}?bshot=1
-  → window.open 新标签打开（脚本打开，截图后可自关闭）
-  → t.bilibili.com 旧版动态详情页（经典卡片布局稳定）?bshot=1 触发自动截图
-  → 下载 PNG → window.close()
-```
+`forEachFeedsCard({ added }) → addMenuItem(card, { text: '截图动态' }) → captureElement(card.element)`
 
-- 适配器新增可选字段 `shotRedirect(el)`：返回跳转 URL（opus 页 → t.bilibili.com），返回 null 就地在当前页截图；核心 `decideShot()` 统一裁决菜单项 / 右上角按钮。
-- URL 已带 `bshot` 时 `shotRedirect` 强制返回 null，防止跳转死循环。
-- opus 详情页菜单注入实测可用，「截图动态」菜单项即跳转入口，无需额外兜底按钮。
-- 自动截图模式等待目标卡片最多 10 次 × 600ms 重试（约 6s），兼容跳转页懒加载。
+参考 `registry/lib/components/feeds/copy-link`。
+
+### 评论截图
+
+`forEachCommentItem({ added }) → 对 [comment, ...comment.replies] 逐条 addMenuItem('截图评论')`，
+并监听 `repliesUpdate` 事件，评论展开更多回复时自动补注入。
+
+参考 `registry/lib/components/utils/comments/copy-link`。
+
+### 评论区整块截图
+
+`forEachCommentArea` 为每个评论区注入顶部按钮：
+
+- v3（`bili-comments`）：通过 `select` 等待 shadow DOM 中的 `bili-comments-header-renderer`，
+  在最后一个 `bili-text-button` 后追加「截图评论区」按钮（参考 `utils/comments/image-export`）。
+- v1 / v2：追加到 `.bili-tabs__nav__items`。
+
+点击后对 `area.element` 整块截图。`videoChange` 时刷新按钮。
+
+## 三、截图引擎
+
+- `engine.ts` 封装 `snapdom.toBlob` + `DownloadPackage.single`，输出 PNG。
+- 截取前调用 `preCache(element)` 预热图片与字体，提高成功率。
+- 高度 > 12000px 时降为 1 倍率，> 24000px 时拒绝（浏览器 canvas 尺寸限制）。
+- 引擎为第三方 MIT 代码，本地打包，无 CDN / 无网络依赖。

@@ -1,0 +1,10 @@
+{
+  "name": "dynshot",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Bilibili-Evolved 组件: 动态与评论截图",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "license": "MIT"
+}
