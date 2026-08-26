@@ -19,8 +19,7 @@ dynshot/
 │   ├── engine.ts           # 截图与下载封装（SnapDOM）
 │   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
 │   └── index.md            # 组件描述（编译时自动注入）
-├── build.js                # 构建入口：node build.js
-├── build-webpack.ts        # webpack 构建脚本（复用 Bilibili-Evolved 工具链与 externals）
+├── build.js                # ★ 构建脚本（纯 Node，无需 tsx / pnpm，复用 BE 的 webpack 与 babel）
 ├── dist/dynshot.js         # ★ 编译产物：单个组件 JS 文件（UMD，export: component）
 ├── package.json
 ├── tsconfig.json           # @dynshot/src 别名配置
@@ -29,16 +28,21 @@ dynshot/
 
 ## 构建（编译输出 JS 文件）
 
-需要本机有一个 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 仓库
+需要本机有一个已安装依赖的 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 仓库
 （默认查找上级目录 `../Bilibili-Evolved`，也可用环境变量 `BILI_EVOLVED_PATH` 指定）：
 
 ```powershell
+# 前置: 在 Bilibili-Evolved 仓库执行过
+#   pnpm install && cd registry && pnpm install
+
 node build.js
 # 产物: dist/dynshot.js
 ```
 
-构建脚本复用 Bilibili-Evolved 的 webpack 配置（babel/TS loader、description 注入、
-`@/core` / `@/components` 等 externals），产物与官方 dev-server 编译的组件格式一致。
+构建脚本是纯 Node 实现（不依赖 tsx / pnpm 子命令）：直接调用 Bilibili-Evolved 仓库
+node_modules 中的 webpack 与 babel（兼容 pnpm 虚拟仓库布局），并复刻官方的
+description 注入与 `@/core` / `@/components` 等 externals，产物与官方 dev-server
+编译的组件格式一致。
 
 ## 安装到 Bilibili-Evolved
 

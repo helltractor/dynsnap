@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.0.3（构建修复）
+
+- 修复构建失败：不再通过 `pnpm tsx` 运行构建（pnpm 10+ 不再支持 `pnpm tsx` 子命令），
+  `build.js` 改为纯 Node 实现，直接调用 Bilibili-Evolved 仓库 node_modules 中的 webpack / babel，
+  并兼容 pnpm 虚拟仓库（`.pnpm`）布局，无 pnpm / tsx 依赖。
+- 移除 `build-webpack.ts`。
+
 ## v0.0.2（组件重构）
 
 - 重构为 Bilibili-Evolved 组件，源码统一放在 `src/`（内部使用 `@dynshot/src` 别名），不再维护多网站适配器与 registry 目录结构。

@@ -19,12 +19,13 @@ dynshot/
 构建链：
 
 ```
-node build.js
-  └─ build-webpack.ts（复用 Bilibili-Evolved 的 webpack 配置）
-       ├─ babel/TS loader + description 注入
-       ├─ @dynshot/src 别名 → 本项目 src/
-       └─ @/core、@/components 等 externals → 运行时由脚本本体提供
-       └─ 输出 dist/dynshot.js
+node build.js（纯 Node 构建脚本，无需 tsx / pnpm）
+  ├─ 临时把 src/ 同步到 BE 仓库 registry/lib/components/feeds/dynshot（构建后清理）
+  ├─ 调用 BE node_modules 中的 webpack + babel（兼容 pnpm 虚拟仓库布局）
+  │    ├─ babel/TS loader + description 注入（复刻官方 inject-metadata）
+  │    ├─ @dynshot/src 别名 → 本项目 src/
+  │    └─ @/core、@/components 等 externals → 运行时由脚本本体提供
+  └─ 输出 dist/dynshot.js（单文件，UMD，export: component）
 ```
 
 Bilibili-Evolved 组件产物不打包核心 API：`@/core/*`、`@/components/*`、`@/plugins/*`、
