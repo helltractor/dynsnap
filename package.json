@@ -4,7 +4,13 @@
   "private": true,
   "description": "Bilibili-Evolved 组件: 动态与评论截图",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "test": "node test/run.js",
+    "test:fixture": "node test/fixture.test.js",
+    "test:real": "node test/real-page.test.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
   },
   "license": "MIT"
 }
