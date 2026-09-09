@@ -116,7 +116,7 @@ const applyReflow = (element: HTMLElement, config: ReflowConfig) => {
       return null
     }
     grid = document.createElement('div')
-    grid.className = 'dynshot-reflow-grid'
+    grid.className = 'dynsnap-reflow-grid'
     grid.style.cssText =
       'display:grid;' +
       `grid-template-columns:repeat(${config.columns || 3},1fr);` +
@@ -202,7 +202,7 @@ const calcBottomPadding = (element: HTMLElement, config: CaptureConfig) => {
 const applyPadViaWrapper = (element: HTMLElement, pad: number) => {
   const computed = getComputedStyle(element)
   const wrap = document.createElement('div')
-  wrap.setAttribute('data-dynshot-pad-wrap', '')
+  wrap.setAttribute('data-dynsnap-pad-wrap', '')
   wrap.style.cssText =
     'box-sizing:border-box;' +
     `margin:${computed.marginTop} ${computed.marginRight} ${computed.marginBottom} ${computed.marginLeft};` +

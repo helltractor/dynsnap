@@ -32,9 +32,9 @@ const main = async () => {
       await sleep(10000)
       await loadComponent(page, { cards: testCase.card })
       await sleep(500)
-      const menu = await page.evaluate(() => !!document.querySelector('.dynshot-test-截图动态'))
+      const menu = await page.evaluate(() => !!document.querySelector('.dynsnap-test-截图动态'))
       report.check(menu, testCase.name + '：菜单项已注入')
-      await page.evaluate(() => document.querySelector('.dynshot-test-截图动态').click())
+      await page.evaluate(() => document.querySelector('.dynsnap-test-截图动态').click())
       await sleep(8000)
       const shot = await analyzeLastShot(page)
       report.check(
@@ -47,7 +47,7 @@ const main = async () => {
     }
   }
 
-  const toastErrors = await page.evaluate(() => (window.__dynshot ? window.__dynshot.errors : []))
+  const toastErrors = await page.evaluate(() => (window.__dynsnap ? window.__dynsnap.errors : []))
   report.check(pageErrors.length === 0 && toastErrors.length === 0, '无页面/组件错误', {
     pageErrors: pageErrors.slice(0, 3),
     toastErrors: toastErrors.slice(0, 3),

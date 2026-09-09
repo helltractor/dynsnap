@@ -1,4 +1,4 @@
-# dynshot 文档
+# dynsnap 文档
 
 ## 文档导航
 
@@ -12,8 +12,8 @@
 # 1. 构建（需要已安装依赖的 Bilibili-Evolved 仓库，默认 ../Bilibili-Evolved）
 node build.js
 # 产物:
-#   dist/dynshot.js       —— 组件 JS，Bilibili-Evolved 组件管理里粘贴 URL 安装
-#   dist/dynshot.user.js  —— Greasy Fork 用户脚本，一键把组件安装进 Bilibili-Evolved
+#   dist/dynsnap.js       —— 组件 JS，Bilibili-Evolved 组件管理里粘贴 URL 安装
+#   dist/dynsnap.user.js  —— Greasy Fork 用户脚本，一键把组件安装进 Bilibili-Evolved
 
 # 2. 测试（需要 puppeteer-core 与 Chrome/Edge）
 npm test
@@ -25,7 +25,7 @@ npm test
 构建与分发：src/ ──build.js──▶ dist/ ──▶ Bilibili-Evolved 组件管理
                                    └──▶ Greasy Fork 用户脚本
 
-运行时：用户 ──▶ B 站页面 ──▶ BE 运行时 ──▶ dynshot 组件入口
+运行时：用户 ──▶ B 站页面 ──▶ BE 运行时 ──▶ dynsnap 组件入口
                                                  │
                                                  ▼
                              截图核心（重排 / 留白 / 排除）──▶ SnapDOM ──▶ PNG 下载

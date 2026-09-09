@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "dynshot · Bilibili-Evolved 组件架构",
+    "title": "dynsnap · Bilibili-Evolved 组件架构",
     "locale": "zh-CN",
     "subtitle": "动态与评论截图：运行时链路 + 构建分发",
     "quality_profile": "showcase",
@@ -14,7 +14,7 @@
           "users",
           "bili-page",
           "be-runtime",
-          "dynshot-component",
+          "dynsnap-component",
           "capture-core",
           "snapdom-engine",
           "png-download"
@@ -27,7 +27,7 @@
         "focus": [
           "bili-page",
           "be-runtime",
-          "dynshot-component",
+          "dynsnap-component",
           "capture-core"
         ],
         "note": "评论 / 回复菜单与评论区顶部按钮共用同一截图核心。"
@@ -92,9 +92,9 @@
       "tag": "宿主运行时"
     },
     {
-      "id": "dynshot-component",
+      "id": "dynsnap-component",
       "type": "backend",
-      "label": "dynshot 组件入口",
+      "label": "dynsnap 组件入口",
       "sublabel": "src/index.ts",
       "pos": [
         460,
@@ -199,7 +199,7 @@
       "id": "dist-artifacts",
       "type": "backend",
       "label": "构建产物 dist/",
-      "sublabel": "dynshot.js / dynshot.user.js",
+      "sublabel": "dynsnap.js / dynsnap.user.js",
       "pos": [
         460,
         60
@@ -233,7 +233,7 @@
       "wraps": [
         "bili-page",
         "be-runtime",
-        "dynshot-component",
+        "dynsnap-component",
         "capture-core",
         "snapdom-engine",
         "image-cdn",
@@ -270,13 +270,13 @@
     {
       "id": "runtime-to-component",
       "from": "be-runtime",
-      "to": "dynshot-component",
+      "to": "dynsnap-component",
       "label": "调用 entry()",
       "labelDy": 57
     },
     {
       "id": "component-to-capture",
-      "from": "dynshot-component",
+      "from": "dynsnap-component",
       "to": "capture-core",
       "label": "captureElement()",
       "labelDy": 57
@@ -369,8 +369,8 @@
       "title": "构建与分发",
       "items": [
         "node build.js 复用 BE 的 webpack / babel",
-        "dist/dynshot.js 供组件管理安装",
-        "dist/dynshot.user.js 供 Greasy Fork 分发"
+        "dist/dynsnap.js 供组件管理安装",
+        "dist/dynsnap.user.js 供 Greasy Fork 分发"
       ]
     }
   ]

@@ -10,9 +10,9 @@ import { videoChange } from '@/core/observer'
 import { select } from '@/core/spin-query'
 import { ShadowRootEvents } from '@/core/shadow-root'
 import { columnUrls, feedsUrls, videoUrls } from '@/core/utils/urls'
-import { captureElement, CaptureConfig } from '@dynshot/src/capture'
+import { captureElement, CaptureConfig } from '@dynsnap/src/capture'
 
-const areaButtonClass = 'dynshot-area-trigger'
+const areaButtonClass = 'dynsnap-area-trigger'
 
 /** 菜单浮层 / 角标 / 注入按钮：截图时排除，避免截进图里 */
 const excludeSelectors = [
@@ -24,8 +24,8 @@ const excludeSelectors = [
   '.bili-cascader',
   '.bili-dyn-card-video__cover__mask',
   '.dyn-video-preview',
-  '.dynshot-card',
-  '.dynshot-comment',
+  '.dynsnap-card',
+  '.dynsnap-comment',
   `.${areaButtonClass}`,
 ]
 
@@ -141,7 +141,7 @@ const entry = async () => {
   forEachFeedsCard({
     added: (card: FeedsCard) => {
       addFeedsMenuItem(card, {
-        className: 'dynshot-card',
+        className: 'dynsnap-card',
         text: '截图动态',
         action: () => {
           captureElement(card.element, `dynamic_${card.id}`, cardConfig)
@@ -161,7 +161,7 @@ const entry = async () => {
     const processItems = (items: CommentReplyItem[]) => {
       items.forEach(item => {
         addCommentMenuItem(item, {
-          className: 'dynshot-comment',
+          className: 'dynsnap-comment',
           text: '截图评论',
           action: () => {
             captureElement(item.element, `comment_${item.id}`, commentConfig)
@@ -195,7 +195,7 @@ const entry = async () => {
 }
 
 export const component = defineComponentMetadata({
-  name: 'dynshot',
+  name: 'dynsnap',
   displayName: '动态与评论截图',
   author: {
     name: 'helltractor',

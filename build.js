@@ -7,12 +7,12 @@ const projectRoot = __dirname
 const beRoot = process.env.BILI_EVOLVED_PATH || nodePath.resolve(projectRoot, '..', '..', 'Bilibili-Evolved')
 const srcDir = nodePath.join(projectRoot, 'src')
 // 官方 description 注入只处理 BE registry 下的 index.ts,
-// 因此构建时把 src 临时同步到 BE 仓库 registry/lib/components/feeds/dynshot, 构建后清理。
-const tempComponentDir = nodePath.join(beRoot, 'registry/lib/components/feeds/dynshot')
+// 因此构建时把 src 临时同步到 BE 仓库 registry/lib/components/feeds/dynsnap, 构建后清理。
+const tempComponentDir = nodePath.join(beRoot, 'registry/lib/components/feeds/dynsnap')
 
 if (!fs.existsSync(nodePath.join(beRoot, 'package.json'))) {
-  console.error('[dynshot] 未找到 Bilibili-Evolved 仓库: ' + beRoot)
-  console.error('[dynshot] 请设置环境变量 BILI_EVOLVED_PATH 指向 Bilibili-Evolved 仓库, 或将仓库放在本项目上级目录')
+  console.error('[dynsnap] 未找到 Bilibili-Evolved 仓库: ' + beRoot)
+  console.error('[dynsnap] 请设置环境变量 BILI_EVOLVED_PATH 指向 Bilibili-Evolved 仓库, 或将仓库放在本项目上级目录')
   process.exit(1)
 }
 
@@ -40,8 +40,8 @@ const resolveFromBe = name => {
 const requirePkg = name => {
   const resolved = resolveFromBe(name)
   if (!resolved) {
-    console.error('[dynshot] 无法从 Bilibili-Evolved 仓库加载 ' + name + ': ' + beRoot)
-    console.error('[dynshot] 请先在 Bilibili-Evolved 仓库执行: pnpm install && cd registry && pnpm install')
+    console.error('[dynsnap] 无法从 Bilibili-Evolved 仓库加载 ' + name + ': ' + beRoot)
+    console.error('[dynsnap] 请先在 Bilibili-Evolved 仓库执行: pnpm install && cd registry && pnpm install')
     process.exit(1)
   }
   return require(resolved)
@@ -101,15 +101,15 @@ const injectDescription = () => ({
 const buildUserscript = () => {
   const templatePath = nodePath.join(projectRoot, 'userscript', 'installer.js')
   const template = fs.readFileSync(templatePath, 'utf8')
-  const componentCode = fs.readFileSync(nodePath.join(projectRoot, 'dist', 'dynshot.js'), 'utf8')
+  const componentCode = fs.readFileSync(nodePath.join(projectRoot, 'dist', 'dynsnap.js'), 'utf8')
   const { version } = JSON.parse(
     fs.readFileSync(nodePath.join(projectRoot, 'package.json'), 'utf8'),
   )
   const output = template
-    .replace(/__DYN_SHOT_VERSION__/g, version)
-    .replace('__DYN_SHOT_COMPONENT_CODE__', JSON.stringify(componentCode))
-  fs.writeFileSync(nodePath.join(projectRoot, 'dist', 'dynshot.user.js'), output)
-  console.log('✅ 已生成 dist/dynshot.user.js (v' + version + ')')
+    .replace(/__DYN_SNAP_VERSION__/g, version)
+    .replace('__DYN_SNAP_COMPONENT_CODE__', JSON.stringify(componentCode))
+  fs.writeFileSync(nodePath.join(projectRoot, 'dist', 'dynsnap.user.js'), output)
+  console.log('✅ 已生成 dist/dynsnap.user.js (v' + version + ')')
 }
 
 const main = () => {
@@ -122,7 +122,7 @@ const main = () => {
   const babelPresetEnv = resolveFromBe('@babel/preset-env')
   const babelPresetTs = resolveFromBe('@babel/preset-typescript')
   if (!babelLoader || !babelPresetEnv || !babelPresetTs) {
-    console.error('[dynshot] 缺少 babel 相关依赖, 请先在 Bilibili-Evolved 仓库执行: pnpm install')
+    console.error('[dynsnap] 缺少 babel 相关依赖, 请先在 Bilibili-Evolved 仓库执行: pnpm install')
     process.exit(1)
   }
 
@@ -131,11 +131,11 @@ const main = () => {
     context: beRoot,
     cache: false,
     devtool: false,
-    entry: { dynshot: entry },
+    entry: { dynsnap: entry },
     output: {
       path: nodePath.join(projectRoot, 'dist'),
-      filename: 'dynshot.js',
-      library: { name: 'dynshot', type: 'umd', export: 'component' },
+      filename: 'dynsnap.js',
+      library: { name: 'dynsnap', type: 'umd', export: 'component' },
     },
     optimization: {
       minimizer: [new TerserPlugin({ extractComments: false })],
@@ -146,7 +146,7 @@ const main = () => {
       extensions: ['.tsx', '.ts', '.js', '.json'],
       alias: {
         '@': nodePath.join(beRoot, 'src'),
-        '@dynshot/src': tempComponentDir,
+        '@dynsnap/src': tempComponentDir,
       },
     },
     module: {
@@ -209,7 +209,7 @@ const main = () => {
         process.exit(1)
       }
       cleanup()
-      console.log('✅ 已生成 dist/dynshot.js')
+      console.log('✅ 已生成 dist/dynsnap.js')
       buildUserscript()
       process.exit(0)
     })

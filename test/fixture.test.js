@@ -68,7 +68,7 @@ const main = async () => {
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.setContent(html)
   await page.evaluate(targets => {
-    window.__dynshot = { saved: [], errors: [], colorTargets: targets }
+    window.__dynsnap = { saved: [], errors: [], colorTargets: targets }
   }, colorTargets)
   await loadComponent(page, {
     cards: '.bili-dyn-item',
@@ -76,12 +76,12 @@ const main = async () => {
     areas: '#v3, #v1',
   })
   await page.evaluate(targets => {
-    window.__dynshot.colorTargets = targets
+    window.__dynsnap.colorTargets = targets
   }, colorTargets)
   await sleep(300)
 
   // 1. 动态卡片截图：多图重排 + 底部留白
-  await page.evaluate(() => document.querySelector('.dynshot-test-截图动态').click())
+  await page.evaluate(() => document.querySelector('.dynsnap-test-截图动态').click())
   await sleep(4500)
   const card = await analyzeLastShot(page)
   report.check(!!card, '动态卡片截图产生下载')
@@ -108,12 +108,12 @@ const main = async () => {
   }
   const restored = await page.evaluate(() => ({
     galleryDisplay: getComputedStyle(document.querySelector('.bili-dyn-gallery')).display,
-    grids: document.querySelectorAll('.dynshot-reflow-grid').length,
+    grids: document.querySelectorAll('.dynsnap-reflow-grid').length,
   }))
   report.check(restored.galleryDisplay === 'flex' && restored.grids === 0, '截图后 DOM 完整还原', restored)
 
   // 2. 评论截图
-  await page.evaluate(() => document.querySelector('.dynshot-test-截图评论').click())
+  await page.evaluate(() => document.querySelector('.dynsnap-test-截图评论').click())
   await sleep(4000)
   const comment = await analyzeLastShot(page)
   report.check(
@@ -128,7 +128,7 @@ const main = async () => {
     const headerShadow = host.shadowRoot.querySelector('bili-comments-header-renderer').shadowRoot
     return {
       v3: [...headerShadow.querySelectorAll('bili-text-button')].map(button => button.textContent),
-      v1: [...document.querySelectorAll('#v1 .dynshot-area-trigger')].map(button => button.textContent),
+      v1: [...document.querySelectorAll('#v1 .dynsnap-area-trigger')].map(button => button.textContent),
     }
   })
   report.check(injected.v3.includes('截图评论区'), 'v3 评论区按钮注入到 shadow DOM 头部', injected.v3)
@@ -138,7 +138,7 @@ const main = async () => {
   await page.evaluate(() => {
     const host = document.getElementById('v3')
     const headerShadow = host.shadowRoot.querySelector('bili-comments-header-renderer').shadowRoot
-    headerShadow.querySelector('.dynshot-area-trigger').click()
+    headerShadow.querySelector('.dynsnap-area-trigger').click()
   })
   await sleep(5000)
   const area = await analyzeLastShot(page)
@@ -148,7 +148,7 @@ const main = async () => {
     area && { type: area.type, nonWhiteRatio: area.nonWhiteRatio },
   )
 
-  const toastErrors = await page.evaluate(() => window.__dynshot.errors)
+  const toastErrors = await page.evaluate(() => window.__dynsnap.errors)
   report.check(pageErrors.length === 0 && toastErrors.length === 0, '无页面/组件错误', {
     pageErrors,
     toastErrors,

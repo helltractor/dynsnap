@@ -1,6 +1,6 @@
 # 架构与实现
 
-> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynshot v0.0.6
+> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynsnap v0.0.6
 
 本文件与 `docs/architecture.html`（archify 生成的交互式架构图）一一对应。
 
@@ -13,20 +13,20 @@
 | 用户 | 外部 | 点击「截图动态 / 截图评论 / 截图评论区」 |
 | B 站页面 | 前端 | 动态卡片 / 评论区（含 Shadow DOM）/ opus 详情页 |
 | Bilibili-Evolved | 宿主运行时 | 提供 `coreApis` / `componentApis`：菜单注入、评论区监听、下载、通知 |
-| dynshot 组件入口 | 后端 | `src/index.ts`：注册回调、B 站预设（`cardConfig` / `commentConfig` / `areaConfig`） |
+| dynsnap 组件入口 | 后端 | `src/index.ts`：注册回调、B 站预设（`cardConfig` / `commentConfig` / `areaConfig`） |
 | 截图核心 | 后端 | `src/capture.ts`：多图重排、底部留白、懒加载、媒体暂停、排除项、PNG 导出 |
 | SnapDOM 引擎 | 后端 | `src/snapdom.ts`（v2.24.1，MIT，本地打包）：`toCanvas()` 渲染 |
 | B 站图片 CDN | 云服务 | `i0.hdslb.com` 等图床，`preCache` 转 dataURL 避免跨域污染 canvas |
 | PNG 下载 | 外部 | `DownloadPackage.single` 触发浏览器下载 |
 | 组件源码 src/ | 后端 | `index.ts` / `capture.ts` / `snapdom.ts` |
 | 构建脚本 build.js | 后端 | 纯 Node，复用 BE 的 webpack + babel，输出单文件产物 |
-| 构建产物 dist/ | 后端 | `dynshot.js`（组件 UMD）、`dynshot.user.js`（Greasy Fork 用户脚本） |
+| 构建产物 dist/ | 后端 | `dynsnap.js`（组件 UMD）、`dynsnap.user.js`（Greasy Fork 用户脚本） |
 | Greasy Fork | 外部 | 用户脚本分发，调用 BE 的 `installFeatureFromCode` 安装组件 |
 
 ## 二、运行时链路（架构图视图 1）
 
 ```
-用户 → B 站页面 → BE 运行时 → dynshot 组件入口 → 截图核心 → SnapDOM → PNG 下载
+用户 → B 站页面 → BE 运行时 → dynsnap 组件入口 → 截图核心 → SnapDOM → PNG 下载
 ```
 
 1. **菜单注入**：BE 的 `forEachFeedsCard` + `addMenuItem` 给每条动态加「截图动态」；
@@ -48,13 +48,13 @@
 ## 四、构建与分发链路（架构图视图 3）
 
 ```
-src/ ──build.js──▶ dist/dynshot.js ──▶ BE 组件管理（粘贴 URL 安装）
-                          └────────▶ dist/dynshot.user.js ──▶ Greasy Fork
+src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 URL 安装）
+                          └────────▶ dist/dynsnap.user.js ──▶ Greasy Fork
 ```
 
 - **build.js**：纯 Node，不依赖 tsx / pnpm 子命令；从 Bilibili-Evolved 仓库的
   `node_modules`（含 pnpm `.pnpm` 虚拟仓库）解析 webpack / babel，临时把 `src/`
-  同步到 BE 的 `registry/lib/components/feeds/dynshot`（以触发官方 description 注入），
+  同步到 BE 的 `registry/lib/components/feeds/dynsnap`（以触发官方 description 注入），
   编译后清理并输出 UMD 组件。
 - **组件产物**：`@/core/*`、`@/components/*`、`@/ui` 等被声明为 externals，
   运行时读取 BE 挂载的 `coreApis.*` / `coreApis.componentApis.*`，因此产物很轻。
@@ -82,6 +82,6 @@ src/ ──build.js──▶ dist/dynshot.js ──▶ BE 组件管理（粘贴 
 
 ```powershell
 npm test                      # 全部
-DYN_SHOT_SKIP_REAL=1 npm test # 跳过真实页面测试
+DYN_SNAP_SKIP_REAL=1 npm test # 跳过真实页面测试
 npm run test:fixture          # 仅离线 fixture
 ```

@@ -4,13 +4,13 @@ const fs = require('fs')
 const path = require('path')
 const { launch, sleep, createReporter, distPath } = require('./helpers')
 
-const userscriptPath = path.join(path.dirname(distPath), 'dynshot.user.js')
+const userscriptPath = path.join(path.dirname(distPath), 'dynsnap.user.js')
 
 const stubBilibiliEvolved = installed => {
   window.__calls = []
   window.__toasts = []
   window.bilibiliEvolved = {
-    settings: { userComponents: installed ? { dynshot: {} } : {} },
+    settings: { userComponents: installed ? { dynsnap: {} } : {} },
     Toast: {
       info: message => window.__toasts.push(['info', message]),
       success: message => window.__toasts.push(['success', message]),
@@ -18,7 +18,7 @@ const stubBilibiliEvolved = installed => {
     },
     installFeatureFromCode: code => {
       window.__calls.push(code)
-      return Promise.resolve({ metadata: { name: 'dynshot' }, message: '已安装组件 dynshot，刷新后生效' })
+      return Promise.resolve({ metadata: { name: 'dynsnap' }, message: '已安装组件 dynsnap，刷新后生效' })
     },
   }
   window.lodash = { debounce: fn => fn }
@@ -36,7 +36,7 @@ const stubBilibiliEvolved = installed => {
 
 const main = async () => {
   const report = createReporter('userscript 测试（Greasy Fork 分发）')
-  report.check(fs.existsSync(userscriptPath), '存在 dist/dynshot.user.js')
+  report.check(fs.existsSync(userscriptPath), '存在 dist/dynsnap.user.js')
   const script = fs.readFileSync(userscriptPath, 'utf8')
   report.check(script.startsWith('// ==UserScript=='), '包含 UserScript 头')
   report.check(/@version\s+\d+\.\d+\.\d+/.test(script), '包含 @version')
@@ -67,8 +67,8 @@ const main = async () => {
   })
   report.check(installed.called, '检测到 Bilibili-Evolved 后调用安装 API')
   report.check(
-    !!installed.name && installed.name === 'dynshot',
-    '内嵌组件代码可解析为 dynshot 组件',
+    !!installed.name && installed.name === 'dynsnap',
+    '内嵌组件代码可解析为 dynsnap 组件',
     installed.name,
   )
   report.check(

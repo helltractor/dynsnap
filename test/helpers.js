@@ -4,10 +4,10 @@ const fs = require('fs')
 const path = require('path')
 
 const projectRoot = path.resolve(__dirname, '..')
-const distPath = path.join(projectRoot, 'dist', 'dynshot.js')
+const distPath = path.join(projectRoot, 'dist', 'dynsnap.js')
 
 const browserCandidates = [
-  process.env.DYN_SHOT_BROWSER,
+  process.env.DYN_SNAP_BROWSER,
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -20,7 +20,7 @@ const browserCandidates = [
 const findBrowser = () => {
   const found = browserCandidates.find(candidate => fs.existsSync(candidate))
   if (!found) {
-    throw new Error('未找到浏览器，请设置 DYN_SHOT_BROWSER 指向 Chrome/Edge 可执行文件')
+    throw new Error('未找到浏览器，请设置 DYN_SNAP_BROWSER 指向 Chrome/Edge 可执行文件')
   }
   return found
 }
@@ -38,27 +38,27 @@ const loadComponent = async (page, config) => {
   const dist = fs.readFileSync(distPath, 'utf8')
   await page.evaluate(buildStub, config)
   await page.evaluate(dist)
-  await page.evaluate(() => window.dynshot.entry())
+  await page.evaluate(() => window.dynsnap.entry())
 }
 
 /** 注入 Bilibili-Evolved 运行时 API 桩，并把组件回调指向页面上真实存在的元素 */
 const buildStub = config => {
   const cfg = config || {}
-  window.__dynshot = { saved: [], errors: [] }
+  window.__dynsnap = { saved: [], errors: [] }
   window.lodash = { debounce: fn => fn }
   window.componentsTags = { feeds: 'feeds', utils: 'utils', video: 'video' }
   const toast = {
     info: message => ({ close() {}, message }),
     success: () => ({ close() {} }),
     error: message => {
-      window.__dynshot.errors.push(String(message))
+      window.__dynsnap.errors.push(String(message))
       return { close() {} }
     },
   }
   const queryAll = selector => (selector ? [...document.querySelectorAll(selector)] : [])
   const addButton = (host, text, action) => {
     const button = document.createElement('button')
-    button.className = `dynshot-test-${text}`
+    button.className = `dynsnap-test-${text}`
     button.textContent = text
     button.addEventListener('click', action)
     host.appendChild(button)
@@ -67,7 +67,7 @@ const buildStub = config => {
     download: {
       DownloadPackage: {
         single: async (name, blob) => {
-          window.__dynshot.saved.push({ name, type: blob.type, size: blob.size, blob })
+          window.__dynsnap.saved.push({ name, type: blob.type, size: blob.size, blob })
         },
       },
     },
@@ -83,7 +83,7 @@ const buildStub = config => {
         return null
       },
     },
-    shadowRoot: { ShadowRootEvents: { Updated: 'dynshot-updated' } },
+    shadowRoot: { ShadowRootEvents: { Updated: 'dynsnap-updated' } },
     utils: {
       urls: { videoUrls: [], columnUrls: [], feedsUrls: [] },
       log: { useScopedConsole: () => console },
@@ -121,7 +121,7 @@ const buildStub = config => {
 /** 读取组件最近一次截图结果，并在页面内做像素统计 */
 const analyzeLastShot = page =>
   page.evaluate(async () => {
-    const { saved } = window.__dynshot
+    const { saved } = window.__dynsnap
     const shot = saved[saved.length - 1]
     if (!shot) return null
     const url = URL.createObjectURL(shot.blob)
@@ -142,7 +142,7 @@ const analyzeLastShot = page =>
       Math.abs(data[index + 1] - rgb[1]) < tolerance &&
       Math.abs(data[index + 2] - rgb[2]) < tolerance
     const colors = {}
-    ;(window.__dynshot.colorTargets || []).forEach(({ name, rgb }) => {
+    ;(window.__dynsnap.colorTargets || []).forEach(({ name, rgb }) => {
       const box = { count: 0, minX: Infinity, maxX: -1, minY: Infinity, maxY: -1 }
       for (let y = 0; y < canvas.height; y++) {
         for (let x = 0; x < canvas.width; x++) {

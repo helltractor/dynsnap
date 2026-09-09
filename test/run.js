@@ -1,5 +1,5 @@
 'use strict'
-// 测试入口：先跑离线 fixture，再跑真实页面（可用 DYN_SHOT_SKIP_REAL=1 跳过）
+// 测试入口：先跑离线 fixture，再跑真实页面（可用 DYN_SNAP_SKIP_REAL=1 跳过）
 const { spawnSync } = require('child_process')
 const path = require('path')
 
@@ -10,8 +10,8 @@ const run = file => {
 }
 
 const results = [run('fixture.test.js'), run('userscript.test.js')]
-if (process.env.DYN_SHOT_SKIP_REAL === '1') {
-  console.log('\n>>> 已跳过真实页面测试（DYN_SHOT_SKIP_REAL=1）')
+if (process.env.DYN_SNAP_SKIP_REAL === '1') {
+  console.log('\n>>> 已跳过真实页面测试（DYN_SNAP_SKIP_REAL=1）')
 } else {
   results.push(run('real-page.test.js'))
 }

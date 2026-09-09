@@ -1,4 +1,4 @@
-# dynshot · Bilibili-Evolved 组件（动态与评论截图）
+# dynsnap · Bilibili-Evolved 组件（动态与评论截图）
 
 在 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 中通过组件方式引入的截图功能:
 
@@ -10,10 +10,10 @@
 
 ---
 
-## 目录结构（简单 `src` 布局，内部统一使用 `@dynshot/src` 别名）
+## 目录结构（简单 `src` 布局，内部统一使用 `@dynsnap/src` 别名）
 
 ```
-dynshot/
+dynsnap/
 ├── src/                    # 组件源码
 │   ├── index.ts            # 组件入口（defineComponentMetadata + entry + B 站预设）
 │   ├── capture.ts          # 截图核心（多图重排 / 底部留白 / 懒加载 / 媒体暂停 / PNG 导出）
@@ -23,20 +23,20 @@ dynshot/
 ├── build.js                # ★ 构建脚本（纯 Node，无需 tsx / pnpm，复用 BE 的 webpack 与 babel）
 ├── test/                   # 无头浏览器测试（fixture / userscript / real-page）
 ├── dist/
-│   ├── dynshot.js          # ★ 组件产物（UMD，export: component）
-│   └── dynshot.user.js     # ★ Greasy Fork 用户脚本产物
+│   ├── dynsnap.js          # ★ 组件产物（UMD，export: component）
+│   └── dynsnap.user.js     # ★ Greasy Fork 用户脚本产物
 ├── docs/
 │   ├── architecture.html   # ★ archify 生成的交互式架构图
 │   ├── archify/            # 架构图源规范（JSON）
 │   └── architecture.md     # 与架构图对应的文字说明
 ├── package.json
-└── tsconfig.json           # @dynshot/src 别名配置
+└── tsconfig.json           # @dynsnap/src 别名配置
 ```
 
 ## 架构图
 
 交互式架构图：[docs/architecture.html](docs/architecture.html)
-（由 [archify](https://github.com/tt-a1i/archify) 生成，源规范见 `docs/archify/dynshot.architecture.json`）。
+（由 [archify](https://github.com/tt-a1i/archify) 生成，源规范见 `docs/archify/dynsnap.architecture.json`）。
 
 ## 构建（编译输出 JS 文件）
 
@@ -49,8 +49,8 @@ dynshot/
 
 node build.js
 # 产物:
-#   dist/dynshot.js       —— 组件 JS（UMD，export: component）
-#   dist/dynshot.user.js  —— Greasy Fork 用户脚本（内嵌同一份组件代码）
+#   dist/dynsnap.js       —— 组件 JS（UMD，export: component）
+#   dist/dynsnap.user.js  —— Greasy Fork 用户脚本（内嵌同一份组件代码）
 ```
 
 构建脚本是纯 Node 实现（不依赖 tsx / pnpm 子命令）：直接调用 Bilibili-Evolved 仓库
@@ -60,18 +60,18 @@ description 注入与 `@/core` / `@/components` 等 externals，产物与官方 
 
 ## 安装到 Bilibili-Evolved
 
-1. 将 `dist/dynshot.js` 放到任意可访问的静态服务器（如 `npx serve` 或 BE 仓库的 dist 目录）。
+1. 将 `dist/dynsnap.js` 放到任意可访问的静态服务器（如 `npx serve` 或 BE 仓库的 dist 目录）。
 2. 打开 b 站，进入脚本设置 → 组件管理，粘贴 JS 文件 URL 安装。
 3. 刷新后即可使用。
 
-> 也可将 `src/` 放入 Bilibili-Evolved 的 `registry/lib/components/feeds/dynshot/`，
-> 走官方「组件开发」流程（`build component feeds/dynshot`）编译调试。
+> 也可将 `src/` 放入 Bilibili-Evolved 的 `registry/lib/components/feeds/dynsnap/`，
+> 走官方「组件开发」流程（`build component feeds/dynsnap`）编译调试。
 
 ## 安装到 Greasy Fork
 
-`dist/dynshot.user.js` 是可直接发布到 [Greasy Fork](https://greasyfork.org/) 的用户脚本：
+`dist/dynsnap.user.js` 是可直接发布到 [Greasy Fork](https://greasyfork.org/) 的用户脚本：
 安装后它会检测页面上是否已加载 Bilibili-Evolved，并调用 BE 的
-`installFeatureFromCode` 把内嵌的 dynshot 组件安装进去（已安装则跳过）。
+`installFeatureFromCode` 把内嵌的 dynsnap 组件安装进去（已安装则跳过）。
 
 > 前提：浏览器里已安装 Bilibili-Evolved；未检测到时脚本会提示安装地址，不做其他动作。
 
@@ -82,7 +82,7 @@ description 注入与 `@/core` / `@/components` 等 externals，产物与官方 
 ```powershell
 npm install          # 安装 puppeteer-core（仅测试用）
 npm test             # fixture + userscript + 真实页面
-DYN_SHOT_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
+DYN_SNAP_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
 ```
 
 | 套件 | 内容 |
@@ -104,7 +104,7 @@ DYN_SHOT_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
 
 - 组件结构符合 [Bilibili-Evolved CONTRIBUTING.md](https://github.com/the1812/Bilibili-Evolved/blob/master/CONTRIBUTING.md) 的组件规范：
   `index.ts` 导出 `component`（`defineComponentMetadata`），`index.md` 作为描述，入口按需 `import()`。
-- 内部模块统一通过 `@dynshot/src` 别名引用（`build.js` 与 `tsconfig.json` 中配置）。
+- 内部模块统一通过 `@dynsnap/src` 别名引用（`build.js` 与 `tsconfig.json` 中配置）。
 - 动态卡片菜单参考 `registry/lib/components/feeds/copy-link`（`forEachFeedsCard` + `addMenuItem`）。
 - 评论菜单参考 `registry/lib/components/utils/comments/copy-link`（`forEachCommentItem` + `addMenuItem`，处理 `repliesUpdate`）。
 - 评论区顶部按钮参考 `registry/lib/components/utils/comments/image-export`（v1 / v2 / v3 评论区）。
