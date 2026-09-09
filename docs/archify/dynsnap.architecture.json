@@ -39,10 +39,9 @@
           "source-src",
           "build-script",
           "dist-artifacts",
-          "greasy-fork",
           "be-runtime"
         ],
-        "note": "同一份 src 编译出组件 JS 与 Greasy Fork 用户脚本。"
+        "note": "同一份 src 编译为单个组件 JS 产物。"
       }
     ]
   },
@@ -199,7 +198,7 @@
       "id": "dist-artifacts",
       "type": "backend",
       "label": "构建产物 dist/",
-      "sublabel": "dynsnap.js / dynsnap.user.js",
+      "sublabel": "dynsnap.js",
       "pos": [
         460,
         60
@@ -208,22 +207,7 @@
         150,
         60
       ],
-      "tag": "UMD + 用户脚本"
-    },
-    {
-      "id": "greasy-fork",
-      "type": "external",
-      "label": "Greasy Fork",
-      "sublabel": "一键安装组件",
-      "pos": [
-        670,
-        60
-      ],
-      "size": [
-        150,
-        60
-      ],
-      "tag": "installFeatureFromCode"
+      "tag": "UMD / export: component"
     }
   ],
   "boundaries": [
@@ -335,14 +319,6 @@
       "variant": "dashed",
       "fromSide": "bottom",
       "toSide": "top"
-    },
-    {
-      "id": "dist-to-greasy",
-      "from": "dist-artifacts",
-      "to": "greasy-fork",
-      "label": "用户脚本分发",
-      "variant": "dashed",
-      "labelDy": 54
     }
   ],
   "cards": [
@@ -370,7 +346,7 @@
       "items": [
         "node build.js 复用 BE 的 webpack / babel",
         "dist/dynsnap.js 供组件管理安装",
-        "dist/dynsnap.user.js 供 Greasy Fork 分发"
+        "产物不打包 BE 核心 API（externals）"
       ]
     }
   ]

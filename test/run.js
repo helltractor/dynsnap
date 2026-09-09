@@ -9,7 +9,7 @@ const run = file => {
   return result.status === 0
 }
 
-const results = [run('fixture.test.js'), run('userscript.test.js')]
+const results = [run('fixture.test.js')]
 if (process.env.DYN_SNAP_SKIP_REAL === '1') {
   console.log('\n>>> 已跳过真实页面测试（DYN_SNAP_SKIP_REAL=1）')
 } else {

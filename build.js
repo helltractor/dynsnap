@@ -97,21 +97,6 @@ const injectDescription = () => ({
   },
 })
 
-/** 生成 Greasy Fork 分发用的用户脚本（内嵌同一份组件产物） */
-const buildUserscript = () => {
-  const templatePath = nodePath.join(projectRoot, 'userscript', 'installer.js')
-  const template = fs.readFileSync(templatePath, 'utf8')
-  const componentCode = fs.readFileSync(nodePath.join(projectRoot, 'dist', 'dynsnap.js'), 'utf8')
-  const { version } = JSON.parse(
-    fs.readFileSync(nodePath.join(projectRoot, 'package.json'), 'utf8'),
-  )
-  const output = template
-    .replace(/__DYN_SNAP_VERSION__/g, version)
-    .replace('__DYN_SNAP_COMPONENT_CODE__', JSON.stringify(componentCode))
-  fs.writeFileSync(nodePath.join(projectRoot, 'dist', 'dynsnap.user.js'), output)
-  console.log('✅ 已生成 dist/dynsnap.user.js (v' + version + ')')
-}
-
 const main = () => {
   fs.rmSync(tempComponentDir, { recursive: true, force: true })
   fs.mkdirSync(tempComponentDir, { recursive: true })
@@ -210,7 +195,6 @@ const main = () => {
       }
       cleanup()
       console.log('✅ 已生成 dist/dynsnap.js')
-      buildUserscript()
       process.exit(0)
     })
   } catch (e) {

@@ -20,8 +20,7 @@
 | PNG 下载 | 外部 | `DownloadPackage.single` 触发浏览器下载 |
 | 组件源码 src/ | 后端 | `index.ts` / `capture.ts` / `snapdom.ts` |
 | 构建脚本 build.js | 后端 | 纯 Node，复用 BE 的 webpack + babel，输出单文件产物 |
-| 构建产物 dist/ | 后端 | `dynsnap.js`（组件 UMD）、`dynsnap.user.js`（Greasy Fork 用户脚本） |
-| Greasy Fork | 外部 | 用户脚本分发，调用 BE 的 `installFeatureFromCode` 安装组件 |
+| 构建产物 dist/ | 后端 | `dynsnap.js`（组件 UMD，export: component） |
 
 ## 二、运行时链路（架构图视图 1）
 
@@ -49,7 +48,6 @@
 
 ```
 src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 URL 安装）
-                          └────────▶ dist/dynsnap.user.js ──▶ Greasy Fork
 ```
 
 - **build.js**：纯 Node，不依赖 tsx / pnpm 子命令；从 Bilibili-Evolved 仓库的
@@ -58,9 +56,6 @@ src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 
   编译后清理并输出 UMD 组件。
 - **组件产物**：`@/core/*`、`@/components/*`、`@/ui` 等被声明为 externals，
   运行时读取 BE 挂载的 `coreApis.*` / `coreApis.componentApis.*`，因此产物很轻。
-- **用户脚本产物**：`userscript/installer.js` 模板 + 内嵌同一份组件代码，
-  在 Greasy Fork 上安装后检测 `window.bilibiliEvolved`，调用
-  `installFeatureFromCode` 完成组件安装（已安装则跳过）。
 
 ## 五、关键实现细节
 
@@ -77,7 +72,6 @@ src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 
 | 套件 | 内容 |
 |------|------|
 | `fixture.test.js` | 离线 fixture：多图重排像素级校验、底部留白、头像入图、DOM 还原、评论截图、v3/v1 评论区按钮 |
-| `userscript.test.js` | Greasy Fork 用户脚本：检测 BE、调用安装 API、内嵌代码可解析、已安装跳过 |
 | `real-page.test.js` | 真实页面（需网络）：opus 详情页 / t.bilibili.com 动态详情页截图 |
 
 ```powershell
