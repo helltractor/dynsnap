@@ -37,9 +37,17 @@ Bilibili-Evolved 运行时的轻量组件 JS，可在组件管理中直接安装
 
 ### 动态卡片截图
 
-`forEachFeedsCard({ added }) → addMenuItem(card, { text: '截图动态' }) → captureElement(card.element)`
+`forEachFeedsCard({ added }) → addMenuItem(card, { text: '截图动态' }) → captureElement(card.element, id, cardConfig)`
 
-参考 `registry/lib/components/feeds/copy-link`。
+参考 `registry/lib/components/feeds/copy-link`。`cardConfig` 携带原插件的核心能力：
+
+- **多图重排**：截图前把 `.bili-dyn-gallery`（横向滑动图集）临时替换为 N 列网格
+  （3 列 / 6px 间距 / 最大 540px / 去掉 CDN `@` 压缩参数取原图），少于 2 张图跳过，截后完整还原。
+- **底部留白**：`paddingFn` 计算「容器上界 → 头像顶部」距离，结果收敛到 `[10, 40]px`；
+  头像找不到时按 `paddingRef`（header）× `paddingRatio`（0.6）兜底，最后回退到 40px。
+  优先内联 `padding-bottom`，被 `!important` 覆盖时降级为包装器。
+- **截图预处理**：暂停卡片内 `video/audio`、触发懒加载图片（不滚动页面）。
+- **排除项**：`.more-panel` / `.opus-more` / `.bili-cascader` 等菜单浮层与注入按钮不截入图片。
 
 ### 评论截图
 
@@ -58,9 +66,18 @@ Bilibili-Evolved 运行时的轻量组件 JS，可在组件管理中直接安装
 
 点击后对 `area.element` 整块截图。`videoChange` 时刷新按钮。
 
-## 三、截图引擎
+### opus 详情页
 
-- `engine.ts` 封装 `snapdom.toBlob` + `DownloadPackage.single`，输出 PNG。
-- 截取前调用 `preCache(element)` 预热图片与字体，提高成功率。
+原插件的做法是跳转 `t.bilibili.com/{id}?bshot=1` 用旧版卡片截图，但 t.bilibili.com
+现在要求登录（未登录时页面为空，实测无 `.bili-dyn-item`），跳转方案已不可用。
+组件改为**就地截图** `www.bilibili.com/opus/{id}` 的 `.bili-opus-view`
+（`forEachFeedsCard` 的 opus 适配器即以此为卡片元素），长文会得到很高的长图。
+
+## 三、截图引擎（`src/capture.ts`）
+
+- 截图流程：暂停媒体 → 触发懒加载 → 多图重排 → 等待图片（600ms）→ 底部留白 →
+  `preCache` 预热 → `snapdom.toCanvas` → `canvas.toBlob('image/png')` → `DownloadPackage.single`。
+- 注意 SnapDOM 的返回值：`toBlob()` 输出 SVG、`toPng()` 返回 HTMLImageElement，
+  只有 `toCanvas()` + `canvas.toBlob` 能得到真正的 PNG。
 - 高度 > 12000px 时降为 1 倍率，> 24000px 时拒绝（浏览器 canvas 尺寸限制）。
 - 引擎为第三方 MIT 代码，本地打包，无 CDN / 无网络依赖。

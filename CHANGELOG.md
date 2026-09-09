@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.0.5（补齐原插件功能：多图重排 / 底部留白 / 截图预处理）
+
+- **恢复多图重排**：迁移到 BE 组件后该功能缺失，多图动态只截到首图。现截图前把横向滑动图集（`.bili-dyn-gallery`）重排为 3 列网格（6px 间距 / 最大 540px / 去掉 CDN `@` 压缩参数取原图），少于 2 张图跳过，截后完整还原。
+- **修复底部留白失效**：动态卡片截图底部无空白、视觉“顶天立地”。现自动计算留白 = **容器上界 → 头像位置**的距离，收敛到 **[10px, 40px]**；头像缺失时回退为 header 高度 × 0.6；inline padding-bottom 被 CSS `!important` 覆盖时降级为「包装器方案」（临时白底 padding div，截后还原 DOM）。评论 / 评论区截图不受影响。
+- **恢复截图预处理**：截图前暂停卡片内 `video/audio`、触发懒加载图片（不滚动页面）。
+- **修复「更多」子浮窗被截入图片**：统一传入 SnapDOM `exclude`，排除 `.more-panel` / `.bili-dyn-more__menu` / `.opus-more__menu` / `.bili-dyn-item__more` / `.opus-more` / `.bili-cascader` 等菜单浮层与注入按钮。
+- 截图核心由 `src/engine.ts` 迁移为 `src/capture.ts`（`CaptureConfig`：scale / waitMs / reconcile / reflow / padding / exclude）。
+- **opus 详情页改为就地截图**：t.bilibili.com 现已要求登录（未登录页面为空，实测无 `.bili-dyn-item`），原「跳转旧版动态页」方案不可用；`?bshot=1` 自动截图参数随之一并移除。
+- 用无头 Edge 端到端验证：多图重排像素级确认（4 张图 3 列网格、全部入图）、底部留白为纯白、头像入图、评论区 v3 shadow DOM 截图正常、截后 DOM 完整还原、无控制台错误；真实 opus / 动态详情页截图成功。
+- 重新构建 dist/dynshot.js（v0.0.5）。
+
 ## v0.0.4（修复截图产物为假 PNG）
 
 - 修复截图功能失效：snapdom.toBlob() 默认输出 SVG（image/svg+xml），

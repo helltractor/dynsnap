@@ -2,7 +2,7 @@
 
 在 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 中通过组件方式引入的截图功能:
 
-- **动态卡片截图**：每条动态的「更多」菜单中提供「截图动态」，一键将动态卡片截为高清 PNG
+- **动态卡片截图**：每条动态的「更多」菜单中提供「截图动态」，一键将动态卡片截为高清 PNG（自动附加底部留白 = 容器上界→头像位置距离，[10, 40]px 边界；「更多」菜单浮层不会截入图片）
 - **评论截图**：视频 / 专栏 / 动态详情等页面的每条评论（含回复）菜单中提供「截图评论」
 - **评论区整块截图**：评论区顶部提供「截图评论区」按钮，整块截图当前已加载的评论区
 
@@ -15,8 +15,8 @@
 ```
 dynshot/
 ├── src/                    # 组件源码
-│   ├── index.ts            # 组件入口（defineComponentMetadata + entry）
-│   ├── engine.ts           # 截图与下载封装（SnapDOM）
+│   ├── index.ts            # 组件入口（defineComponentMetadata + entry + B 站预设）
+│   ├── capture.ts          # 截图核心（多图重排 / 底部留白 / 懒加载 / 媒体暂停 / PNG 导出）
 │   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
 │   └── index.md            # 组件描述（编译时自动注入）
 ├── build.js                # ★ 构建脚本（纯 Node，无需 tsx / pnpm，复用 BE 的 webpack 与 babel）
@@ -56,6 +56,9 @@ description 注入与 `@/core` / `@/components` 等 externals，产物与官方 
 ## 使用
 
 - **动态页 / 个人空间 / 动态详情**：点卡片右上角「···」→「截图动态」
+  - 多图动态：截图前自动把横向滑动图集（`.bili-dyn-gallery`）重排为 3 列网格，避免只截到首图，截后完整还原
+  - 底部留白：按「容器上界 → 头像顶部」距离动态计算（收敛到 10~40px），头像找不到时按 header 高度 × 0.6 兜底
+  - 截图前暂停卡片内视频/音频、触发懒加载图片，并排除「更多」菜单浮层
 - **视频 / 专栏 / 动态详情的评论区**：点评论（或回复）右下角菜单 →「截图评论」
 - **视频 / 专栏 / 动态详情的评论区顶部**：「截图评论区」→ 整块截图当前评论区
 
@@ -63,11 +66,24 @@ description 注入与 `@/core` / `@/components` 等 externals，产物与官方 
 
 - 组件结构符合 [Bilibili-Evolved CONTRIBUTING.md](https://github.com/the1812/Bilibili-Evolved/blob/master/CONTRIBUTING.md) 的组件规范：
   `index.ts` 导出 `component`（`defineComponentMetadata`），`index.md` 作为描述，入口按需 `import()`。
-- 内部模块统一通过 `@dynshot/src` 别名引用（`build-webpack.ts` 与 `tsconfig.json` 中配置）。
+- 内部模块统一通过 `@dynshot/src` 别名引用（`build.js` 与 `tsconfig.json` 中配置）。
 - 动态卡片菜单参考 `registry/lib/components/feeds/copy-link`（`forEachFeedsCard` + `addMenuItem`）。
 - 评论菜单参考 `registry/lib/components/utils/comments/copy-link`（`forEachCommentItem` + `addMenuItem`，处理 `repliesUpdate`）。
 - 评论区顶部按钮参考 `registry/lib/components/utils/comments/image-export`（v1 / v2 / v3 评论区）。
 - 仅面向 B 站，无任何多网站适配器预设。
+- **与原插件（v0.0.1）的功能对照**：
+
+  | 原插件功能 | 组件现状 |
+  |-----------|---------|
+  | 动态卡片菜单「截图动态」 | ✅ `forEachFeedsCard` + `addMenuItem` |
+  | 多图重排（横向图集 → 网格） | ✅ `capture.ts` 中 `applyReflow`，截后还原 |
+  | 底部留白（头像距离 / header 兜底） | ✅ `calcBottomPadding` + 内联 padding / 包装器降级 |
+  | 懒加载图片触发、媒体暂停 | ✅ `triggerLazyImages` / `pauseMedia` |
+  | 排除菜单浮层 / 角标 | ✅ SnapDOM `exclude` |
+  | 评论截图（含回复） | ✅ 新增，评论菜单「截图评论」 |
+  | 评论区整块截图 | ✅ 新增，评论区顶部「截图评论区」 |
+  | opus 详情页跳转 `t.bilibili.com` 截图 | ⚠️ 已改为就地截图：t.bilibili.com 现已要求登录（无登录时页面为空），跳转方案不可用 |
+  | URL 参数自动截图（`?bshot=1`） | ⚠️ 随跳转方案一并移除（仅服务于跳转流程） |
 
 ## 许可
 

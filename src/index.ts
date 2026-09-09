@@ -10,9 +10,65 @@ import { videoChange } from '@/core/observer'
 import { select } from '@/core/spin-query'
 import { ShadowRootEvents } from '@/core/shadow-root'
 import { columnUrls, feedsUrls, videoUrls } from '@/core/utils/urls'
-import { captureElement } from '@dynshot/src/engine'
+import { captureElement, CaptureConfig } from '@dynshot/src/capture'
 
 const areaButtonClass = 'dynshot-area-trigger'
+
+/** 菜单浮层 / 角标 / 注入按钮：截图时排除，避免截进图里 */
+const excludeSelectors = [
+  '.more-panel',
+  '.bili-dyn-more__menu',
+  '.opus-more__menu',
+  '.bili-dyn-item__more',
+  '.opus-more',
+  '.bili-cascader',
+  '.bili-dyn-card-video__cover__mask',
+  '.dyn-video-preview',
+  '.dynshot-card',
+  '.dynshot-comment',
+  `.${areaButtonClass}`,
+]
+
+const avatarSelector =
+  '.bili-dyn-item__avatar .b-avatar, .bili-dyn-item__avatar .bili-avatar, .b-avatar, .bili-avatar'
+
+/** 动态卡片：多图重排 + 头像底部留白（原插件核心能力） */
+const cardConfig: CaptureConfig = {
+  reflow: {
+    gallerySel: '.bili-dyn-gallery',
+    columns: 3,
+    gap: 6,
+    maxWidth: 540,
+    stripParams: true,
+  },
+  padding: {
+    paddingFn: element => {
+      const avatar = element.querySelector(avatarSelector) as HTMLElement | null
+      if (!avatar || avatar.offsetHeight === 0) {
+        return null
+      }
+      return Math.round(
+        avatar.getBoundingClientRect().top - element.getBoundingClientRect().top,
+      )
+    },
+    paddingRef:
+      '.bili-dyn-item__header, .bili-dyn-item__avatar, [class*="opus-card"] [class*="header"], [class*="opus-detail"] [class*="header"]',
+    paddingRatio: 0.6,
+  },
+  exclude: excludeSelectors,
+}
+
+/** 单条评论 / 回复：无需重排与留白 */
+const commentConfig: CaptureConfig = {
+  padding: false,
+  exclude: excludeSelectors,
+}
+
+/** 整个评论区 */
+const areaConfig: CaptureConfig = {
+  padding: false,
+  exclude: excludeSelectors,
+}
 
 /** 从当前 URL 提取用于文件名的页面 ID */
 const getPageId = () => {
@@ -40,7 +96,7 @@ const getPageId = () => {
 const addAreaButton = async (area: CommentArea) => {
   const { element } = area
   const onClick = () => {
-    captureElement(element, `comments_${getPageId()}`)
+    captureElement(element, `comments_${getPageId()}`, areaConfig)
   }
   if (element.tagName.toLowerCase() === 'bili-comments') {
     // v3 评论区渲染在 shadow DOM 中, 按钮需注入到其头部
@@ -80,7 +136,7 @@ const addAreaButton = async (area: CommentArea) => {
 }
 
 const entry = async () => {
-  // 动态卡片菜单: 截图动态（保留原 dynshot 核心功能, 仅 B 站）
+  // 动态卡片菜单: 截图动态（多图重排 + 底部留白）
   const { forEachFeedsCard, addMenuItem: addFeedsMenuItem } = await import('@/components/feeds/api')
   forEachFeedsCard({
     added: (card: FeedsCard) => {
@@ -88,13 +144,13 @@ const entry = async () => {
         className: 'dynshot-card',
         text: '截图动态',
         action: () => {
-          captureElement(card.element, `dynamic_${card.id}`)
+          captureElement(card.element, `dynamic_${card.id}`, cardConfig)
         },
       })
     },
   })
 
-  // 评论菜单: 截图评论（覆盖视频 / 专栏 / 动态详情等页面的评论区）
+  // 评论菜单: 截图评论（含回复）
   const {
     forEachCommentItem,
     forEachCommentArea,
@@ -108,7 +164,7 @@ const entry = async () => {
           className: 'dynshot-comment',
           text: '截图评论',
           action: () => {
-            captureElement(item.element, `comment_${item.id}`)
+            captureElement(item.element, `comment_${item.id}`, commentConfig)
           },
         })
       })
