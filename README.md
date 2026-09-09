@@ -109,7 +109,7 @@ DYN_SHOT_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
 - 评论菜单参考 `registry/lib/components/utils/comments/copy-link`（`forEachCommentItem` + `addMenuItem`，处理 `repliesUpdate`）。
 - 评论区顶部按钮参考 `registry/lib/components/utils/comments/image-export`（v1 / v2 / v3 评论区）。
 - 仅面向 B 站，无任何多网站适配器预设。
-- **与原插件（v0.0.1）的功能对照**：
+- **与原插件的功能对照**：
 
   | 原插件功能 | 组件现状 |
   |-----------|---------|

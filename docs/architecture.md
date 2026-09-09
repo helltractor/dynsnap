@@ -1,6 +1,6 @@
 # 架构与实现
 
-> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynshot v1.1.0
+> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynshot v0.0.6
 
 本文件与 `docs/architecture.html`（archify 生成的交互式架构图）一一对应。
 
