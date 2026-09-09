@@ -19,12 +19,24 @@ dynshot/
 │   ├── capture.ts          # 截图核心（多图重排 / 底部留白 / 懒加载 / 媒体暂停 / PNG 导出）
 │   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
 │   └── index.md            # 组件描述（编译时自动注入）
+├── userscript/installer.js # ★ Greasy Fork 用户脚本模板（内嵌组件产物）
 ├── build.js                # ★ 构建脚本（纯 Node，无需 tsx / pnpm，复用 BE 的 webpack 与 babel）
-├── dist/dynshot.js         # ★ 编译产物：单个组件 JS 文件（UMD，export: component）
+├── test/                   # 无头浏览器测试（fixture / userscript / real-page）
+├── dist/
+│   ├── dynshot.js          # ★ 组件产物（UMD，export: component）
+│   └── dynshot.user.js     # ★ Greasy Fork 用户脚本产物
+├── docs/
+│   ├── architecture.html   # ★ archify 生成的交互式架构图
+│   ├── archify/            # 架构图源规范（JSON）
+│   └── architecture.md     # 与架构图对应的文字说明
 ├── package.json
-├── tsconfig.json           # @dynshot/src 别名配置
-└── docs/
+└── tsconfig.json           # @dynshot/src 别名配置
 ```
+
+## 架构图
+
+交互式架构图：[docs/architecture.html](docs/architecture.html)
+（由 [archify](https://github.com/tt-a1i/archify) 生成，源规范见 `docs/archify/dynshot.architecture.json`）。
 
 ## 构建（编译输出 JS 文件）
 
@@ -36,7 +48,9 @@ dynshot/
 #   pnpm install && cd registry && pnpm install
 
 node build.js
-# 产物: dist/dynshot.js
+# 产物:
+#   dist/dynshot.js       —— 组件 JS（UMD，export: component）
+#   dist/dynshot.user.js  —— Greasy Fork 用户脚本（内嵌同一份组件代码）
 ```
 
 构建脚本是纯 Node 实现（不依赖 tsx / pnpm 子命令）：直接调用 Bilibili-Evolved 仓库
@@ -52,6 +66,30 @@ description 注入与 `@/core` / `@/components` 等 externals，产物与官方 
 
 > 也可将 `src/` 放入 Bilibili-Evolved 的 `registry/lib/components/feeds/dynshot/`，
 > 走官方「组件开发」流程（`build component feeds/dynshot`）编译调试。
+
+## 安装到 Greasy Fork
+
+`dist/dynshot.user.js` 是可直接发布到 [Greasy Fork](https://greasyfork.org/) 的用户脚本：
+安装后它会检测页面上是否已加载 Bilibili-Evolved，并调用 BE 的
+`installFeatureFromCode` 把内嵌的 dynshot 组件安装进去（已安装则跳过）。
+
+> 前提：浏览器里已安装 Bilibili-Evolved；未检测到时脚本会提示安装地址，不做其他动作。
+
+## 测试
+
+无头浏览器测试（Chrome / Edge + `puppeteer-core`）：
+
+```powershell
+npm install          # 安装 puppeteer-core（仅测试用）
+npm test             # fixture + userscript + 真实页面
+DYN_SHOT_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
+```
+
+| 套件 | 内容 |
+|------|------|
+| `test/fixture.test.js` | 离线 fixture：多图重排像素级校验、底部留白、头像入图、DOM 还原、评论截图、v3/v1 评论区按钮 |
+| `test/userscript.test.js` | Greasy Fork 用户脚本：检测 BE、调用安装 API、内嵌代码可解析、已安装跳过 |
+| `test/real-page.test.js` | 真实页面（需网络）：opus 详情页 / t.bilibili.com 动态详情页 |
 
 ## 使用
 

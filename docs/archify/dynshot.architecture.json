@@ -1,0 +1,377 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "dynshot · Bilibili-Evolved 组件架构",
+    "locale": "zh-CN",
+    "subtitle": "动态与评论截图：运行时链路 + 构建分发",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "runtime-path",
+        "label": "截图运行时链路",
+        "focus": [
+          "users",
+          "bili-page",
+          "be-runtime",
+          "dynshot-component",
+          "capture-core",
+          "snapdom-engine",
+          "png-download"
+        ],
+        "note": "从用户点击菜单到下载 PNG 的完整链路。"
+      },
+      {
+        "id": "comment-path",
+        "label": "评论区链路",
+        "focus": [
+          "bili-page",
+          "be-runtime",
+          "dynshot-component",
+          "capture-core"
+        ],
+        "note": "评论 / 回复菜单与评论区顶部按钮共用同一截图核心。"
+      },
+      {
+        "id": "build-path",
+        "label": "构建与分发",
+        "focus": [
+          "source-src",
+          "build-script",
+          "dist-artifacts",
+          "greasy-fork",
+          "be-runtime"
+        ],
+        "note": "同一份 src 编译出组件 JS 与 Greasy Fork 用户脚本。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "用户",
+      "sublabel": "点击「截图动态 / 截图评论」",
+      "pos": [
+        40,
+        430
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "bili-page",
+      "type": "frontend",
+      "label": "B 站页面",
+      "sublabel": "动态卡片 / 评论区 / opus",
+      "pos": [
+        40,
+        250
+      ],
+      "size": [
+        150,
+        66
+      ],
+      "tag": "DOM + Shadow DOM"
+    },
+    {
+      "id": "be-runtime",
+      "type": "backend",
+      "label": "Bilibili-Evolved",
+      "sublabel": "coreApis / componentApis",
+      "pos": [
+        250,
+        250
+      ],
+      "size": [
+        150,
+        66
+      ],
+      "tag": "宿主运行时"
+    },
+    {
+      "id": "dynshot-component",
+      "type": "backend",
+      "label": "dynshot 组件入口",
+      "sublabel": "src/index.ts",
+      "pos": [
+        460,
+        250
+      ],
+      "size": [
+        150,
+        66
+      ],
+      "tag": "forEachFeedsCard 等"
+    },
+    {
+      "id": "capture-core",
+      "type": "backend",
+      "label": "截图核心",
+      "sublabel": "src/capture.ts",
+      "pos": [
+        670,
+        250
+      ],
+      "size": [
+        150,
+        66
+      ],
+      "tag": "重排 / 留白 / 排除"
+    },
+    {
+      "id": "snapdom-engine",
+      "type": "backend",
+      "label": "SnapDOM 引擎",
+      "sublabel": "src/snapdom.ts v2.24.1",
+      "pos": [
+        880,
+        250
+      ],
+      "size": [
+        150,
+        66
+      ],
+      "tag": "toCanvas"
+    },
+    {
+      "id": "image-cdn",
+      "type": "cloud",
+      "label": "B 站图片 CDN",
+      "sublabel": "i0.hdslb.com",
+      "pos": [
+        880,
+        430
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "tag": "preCache 转 dataURL"
+    },
+    {
+      "id": "png-download",
+      "type": "external",
+      "label": "PNG 下载",
+      "sublabel": "DownloadPackage.single",
+      "pos": [
+        670,
+        430
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "tag": "canvas.toBlob"
+    },
+    {
+      "id": "source-src",
+      "type": "backend",
+      "label": "组件源码 src/",
+      "sublabel": "index / capture / snapdom",
+      "pos": [
+        40,
+        60
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "build-script",
+      "type": "backend",
+      "label": "构建脚本 build.js",
+      "sublabel": "webpack + babel（BE 依赖）",
+      "pos": [
+        250,
+        60
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "tag": "纯 Node"
+    },
+    {
+      "id": "dist-artifacts",
+      "type": "backend",
+      "label": "构建产物 dist/",
+      "sublabel": "dynshot.js / dynshot.user.js",
+      "pos": [
+        460,
+        60
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "tag": "UMD + 用户脚本"
+    },
+    {
+      "id": "greasy-fork",
+      "type": "external",
+      "label": "Greasy Fork",
+      "sublabel": "一键安装组件",
+      "pos": [
+        670,
+        60
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "tag": "installFeatureFromCode"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "浏览器（B 站页面）",
+      "wraps": [
+        "bili-page",
+        "be-runtime",
+        "dynshot-component",
+        "capture-core",
+        "snapdom-engine",
+        "image-cdn",
+        "png-download"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "构建与分发",
+      "wraps": [
+        "source-src",
+        "build-script",
+        "dist-artifacts"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "users-to-page",
+      "from": "users",
+      "to": "bili-page",
+      "label": "点击菜单",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "page-to-runtime",
+      "from": "bili-page",
+      "to": "be-runtime",
+      "label": "菜单注入 / 评论区监听",
+      "labelDy": 57
+    },
+    {
+      "id": "runtime-to-component",
+      "from": "be-runtime",
+      "to": "dynshot-component",
+      "label": "调用 entry()",
+      "labelDy": 57
+    },
+    {
+      "id": "component-to-capture",
+      "from": "dynshot-component",
+      "to": "capture-core",
+      "label": "captureElement()",
+      "labelDy": 57
+    },
+    {
+      "id": "capture-to-page",
+      "from": "capture-core",
+      "to": "bili-page",
+      "label": "重排 / 留白 / 懒加载",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "id": "capture-to-cdn",
+      "from": "capture-core",
+      "to": "image-cdn",
+      "label": "preCache 图片",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "capture-to-snapdom",
+      "from": "capture-core",
+      "to": "snapdom-engine",
+      "label": "toCanvas()"
+    },
+    {
+      "id": "capture-to-download",
+      "from": "capture-core",
+      "to": "png-download",
+      "label": "PNG blob",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24,
+      "labelDx": -70
+    },
+    {
+      "id": "src-to-build",
+      "from": "source-src",
+      "to": "build-script",
+      "label": "读取源码"
+    },
+    {
+      "id": "build-to-dist",
+      "from": "build-script",
+      "to": "dist-artifacts",
+      "label": "编译"
+    },
+    {
+      "id": "dist-to-runtime",
+      "from": "dist-artifacts",
+      "to": "be-runtime",
+      "label": "组件管理安装",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "dist-to-greasy",
+      "from": "dist-artifacts",
+      "to": "greasy-fork",
+      "label": "用户脚本分发",
+      "variant": "dashed",
+      "labelDy": 54
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "运行时",
+      "items": [
+        "Bilibili-Evolved 提供菜单注入与评论区监听",
+        "组件入口把回调接到截图核心",
+        "截图为元素级捕获，就地完成"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "截图核心",
+      "items": [
+        "多图重排：横向图集临时重排为 3 列网格",
+        "底部留白：容器上界→头像距离，收敛 10~40px",
+        "SnapDOM toCanvas → canvas.toBlob 输出真 PNG"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "构建与分发",
+      "items": [
+        "node build.js 复用 BE 的 webpack / babel",
+        "dist/dynshot.js 供组件管理安装",
+        "dist/dynshot.user.js 供 Greasy Fork 分发"
+      ]
+    }
+  ]
+}

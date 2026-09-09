@@ -1,83 +1,87 @@
 # 架构与实现
 
-> [← 文档总览](index.md) · dynshot v1.0.0
+> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynshot v1.1.0
 
-## 一、架构：简单 `src` 布局 + 编译产物
+本文件与 `docs/architecture.html`（archify 生成的交互式架构图）一一对应。
 
-不再维护 Bilibili-Evolved 的 `registry/lib/components/...` 目录结构，项目本体只有两大部分：
+## 一、架构总览
+
+架构图把项目分成两个区域：**浏览器（B 站页面）** 的运行时链路，以及 **构建与分发** 链路。
+
+| 节点 | 类型 | 职责 |
+|------|------|------|
+| 用户 | 外部 | 点击「截图动态 / 截图评论 / 截图评论区」 |
+| B 站页面 | 前端 | 动态卡片 / 评论区（含 Shadow DOM）/ opus 详情页 |
+| Bilibili-Evolved | 宿主运行时 | 提供 `coreApis` / `componentApis`：菜单注入、评论区监听、下载、通知 |
+| dynshot 组件入口 | 后端 | `src/index.ts`：注册回调、B 站预设（`cardConfig` / `commentConfig` / `areaConfig`） |
+| 截图核心 | 后端 | `src/capture.ts`：多图重排、底部留白、懒加载、媒体暂停、排除项、PNG 导出 |
+| SnapDOM 引擎 | 后端 | `src/snapdom.ts`（v2.24.1，MIT，本地打包）：`toCanvas()` 渲染 |
+| B 站图片 CDN | 云服务 | `i0.hdslb.com` 等图床，`preCache` 转 dataURL 避免跨域污染 canvas |
+| PNG 下载 | 外部 | `DownloadPackage.single` 触发浏览器下载 |
+| 组件源码 src/ | 后端 | `index.ts` / `capture.ts` / `snapdom.ts` |
+| 构建脚本 build.js | 后端 | 纯 Node，复用 BE 的 webpack + babel，输出单文件产物 |
+| 构建产物 dist/ | 后端 | `dynshot.js`（组件 UMD）、`dynshot.user.js`（Greasy Fork 用户脚本） |
+| Greasy Fork | 外部 | 用户脚本分发，调用 BE 的 `installFeatureFromCode` 安装组件 |
+
+## 二、运行时链路（架构图视图 1）
 
 ```
-dynshot/
-├── src/                    # 组件源码（内部用 @dynshot/src 别名引用）
-│   ├── index.ts            # 组件入口：defineComponentMetadata + entry
-│   ├── index.md            # 组件描述（webpack 自动注入 description）
-│   ├── engine.ts           # 截图与下载封装（SnapDOM）
-│   └── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
-└── dist/dynshot.js         # ★ 编译产物：单个组件 JS（UMD，export: component）
+用户 → B 站页面 → BE 运行时 → dynshot 组件入口 → 截图核心 → SnapDOM → PNG 下载
 ```
 
-构建链：
+1. **菜单注入**：BE 的 `forEachFeedsCard` + `addMenuItem` 给每条动态加「截图动态」；
+   `forEachCommentItem` + `addMenuItem` 给每条评论（含回复）加「截图评论」。
+2. **触发截图**：组件入口调用 `captureElement(element, id, config)`，config 决定是否重排 / 留白 / 排除。
+3. **预处理**：暂停卡片内 `video/audio`、触发懒加载图片（不滚动页面）。
+4. **多图重排**：把 `.bili-dyn-gallery` 横向图集临时替换为 3 列网格（6px / 最大 540px / 去 CDN `@` 参数），<2 图跳过，截后还原。
+5. **底部留白**：`paddingFn` 取「容器上界 → 头像顶部」距离，收敛 `[10, 40]px`；头像缺失按 header × 0.6 兜底；inline padding 被 `!important` 覆盖时降级为包装器。
+6. **渲染与导出**：`preCache` 预热图片/字体 → `snapdom.toCanvas()` → `canvas.toBlob('image/png')` → `DownloadPackage.single`。
+
+## 三、评论区链路（架构图视图 2）
+
+- **单条评论**：评论 / 回复菜单「截图评论」，监听 `repliesUpdate` 为展开的回复补注入。
+- **整个评论区**：`forEachCommentArea` 注入顶部按钮
+  - v3（`bili-comments`）：`select` 等待 shadow DOM 的 `bili-comments-header-renderer`，在最后一个 `bili-text-button` 后追加按钮；
+  - v1 / v2：追加到 `.bili-tabs__nav__items`；
+  - `videoChange` 时刷新按钮。
+
+## 四、构建与分发链路（架构图视图 3）
 
 ```
-node build.js（纯 Node 构建脚本，无需 tsx / pnpm）
-  ├─ 临时把 src/ 同步到 BE 仓库 registry/lib/components/feeds/dynshot（构建后清理）
-  ├─ 调用 BE node_modules 中的 webpack + babel（兼容 pnpm 虚拟仓库布局）
-  │    ├─ babel/TS loader + description 注入（复刻官方 inject-metadata）
-  │    ├─ @dynshot/src 别名 → 本项目 src/
-  │    └─ @/core、@/components 等 externals → 运行时由脚本本体提供
-  └─ 输出 dist/dynshot.js（单文件，UMD，export: component）
+src/ ──build.js──▶ dist/dynshot.js ──▶ BE 组件管理（粘贴 URL 安装）
+                          └────────▶ dist/dynshot.user.js ──▶ Greasy Fork
 ```
 
-Bilibili-Evolved 组件产物不打包核心 API：`@/core/*`、`@/components/*`、`@/plugins/*`、
-`@/ui` 在构建时被声明为 externals，运行时直接读取脚本本体挂载的
-`coreApis.componentApis.*` / `coreApis.core.*` 全局对象。因此编译产物是一个依赖
-Bilibili-Evolved 运行时的轻量组件 JS，可在组件管理中直接安装。
+- **build.js**：纯 Node，不依赖 tsx / pnpm 子命令；从 Bilibili-Evolved 仓库的
+  `node_modules`（含 pnpm `.pnpm` 虚拟仓库）解析 webpack / babel，临时把 `src/`
+  同步到 BE 的 `registry/lib/components/feeds/dynshot`（以触发官方 description 注入），
+  编译后清理并输出 UMD 组件。
+- **组件产物**：`@/core/*`、`@/components/*`、`@/ui` 等被声明为 externals，
+  运行时读取 BE 挂载的 `coreApis.*` / `coreApis.componentApis.*`，因此产物很轻。
+- **用户脚本产物**：`userscript/installer.js` 模板 + 内嵌同一份组件代码，
+  在 Greasy Fork 上安装后检测 `window.bilibiliEvolved`，调用
+  `installFeatureFromCode` 完成组件安装（已安装则跳过）。
 
-## 二、功能流程
+## 五、关键实现细节
 
-### 动态卡片截图
+- **SnapDOM 返回值**：`toBlob()` 输出 SVG、`toPng()` 返回 HTMLImageElement；
+  只有 `toCanvas()` + `canvas.toBlob` 能得到真正的 PNG（否则下载到的是「假 PNG」）。
+- **opus 详情页**：原插件跳转 `t.bilibili.com/{id}` 的方案已不可用（该站现要求登录），
+  改为就地截图 `.bili-opus-view`；长文会得到很高的长图（SnapDOM 在 16384px 处等比缩放）。
+- **尺寸保护**：目标边长 > 12000px 时降为 1 倍率，> 24000px 时拒绝并提示改用单条评论截图。
 
-`forEachFeedsCard({ added }) → addMenuItem(card, { text: '截图动态' }) → captureElement(card.element, id, cardConfig)`
+## 六、测试
 
-参考 `registry/lib/components/feeds/copy-link`。`cardConfig` 携带原插件的核心能力：
+`test/` 下为无头浏览器（Chrome / Edge + puppeteer-core）测试：
 
-- **多图重排**：截图前把 `.bili-dyn-gallery`（横向滑动图集）临时替换为 N 列网格
-  （3 列 / 6px 间距 / 最大 540px / 去掉 CDN `@` 压缩参数取原图），少于 2 张图跳过，截后完整还原。
-- **底部留白**：`paddingFn` 计算「容器上界 → 头像顶部」距离，结果收敛到 `[10, 40]px`；
-  头像找不到时按 `paddingRef`（header）× `paddingRatio`（0.6）兜底，最后回退到 40px。
-  优先内联 `padding-bottom`，被 `!important` 覆盖时降级为包装器。
-- **截图预处理**：暂停卡片内 `video/audio`、触发懒加载图片（不滚动页面）。
-- **排除项**：`.more-panel` / `.opus-more` / `.bili-cascader` 等菜单浮层与注入按钮不截入图片。
+| 套件 | 内容 |
+|------|------|
+| `fixture.test.js` | 离线 fixture：多图重排像素级校验、底部留白、头像入图、DOM 还原、评论截图、v3/v1 评论区按钮 |
+| `userscript.test.js` | Greasy Fork 用户脚本：检测 BE、调用安装 API、内嵌代码可解析、已安装跳过 |
+| `real-page.test.js` | 真实页面（需网络）：opus 详情页 / t.bilibili.com 动态详情页截图 |
 
-### 评论截图
-
-`forEachCommentItem({ added }) → 对 [comment, ...comment.replies] 逐条 addMenuItem('截图评论')`，
-并监听 `repliesUpdate` 事件，评论展开更多回复时自动补注入。
-
-参考 `registry/lib/components/utils/comments/copy-link`。
-
-### 评论区整块截图
-
-`forEachCommentArea` 为每个评论区注入顶部按钮：
-
-- v3（`bili-comments`）：通过 `select` 等待 shadow DOM 中的 `bili-comments-header-renderer`，
-  在最后一个 `bili-text-button` 后追加「截图评论区」按钮（参考 `utils/comments/image-export`）。
-- v1 / v2：追加到 `.bili-tabs__nav__items`。
-
-点击后对 `area.element` 整块截图。`videoChange` 时刷新按钮。
-
-### opus 详情页
-
-原插件的做法是跳转 `t.bilibili.com/{id}?bshot=1` 用旧版卡片截图，但 t.bilibili.com
-现在要求登录（未登录时页面为空，实测无 `.bili-dyn-item`），跳转方案已不可用。
-组件改为**就地截图** `www.bilibili.com/opus/{id}` 的 `.bili-opus-view`
-（`forEachFeedsCard` 的 opus 适配器即以此为卡片元素），长文会得到很高的长图。
-
-## 三、截图引擎（`src/capture.ts`）
-
-- 截图流程：暂停媒体 → 触发懒加载 → 多图重排 → 等待图片（600ms）→ 底部留白 →
-  `preCache` 预热 → `snapdom.toCanvas` → `canvas.toBlob('image/png')` → `DownloadPackage.single`。
-- 注意 SnapDOM 的返回值：`toBlob()` 输出 SVG、`toPng()` 返回 HTMLImageElement，
-  只有 `toCanvas()` + `canvas.toBlob` 能得到真正的 PNG。
-- 高度 > 12000px 时降为 1 倍率，> 24000px 时拒绝（浏览器 canvas 尺寸限制）。
-- 引擎为第三方 MIT 代码，本地打包，无 CDN / 无网络依赖。
+```powershell
+npm test                      # 全部
+DYN_SHOT_SKIP_REAL=1 npm test # 跳过真实页面测试
+npm run test:fixture          # 仅离线 fixture
+```
