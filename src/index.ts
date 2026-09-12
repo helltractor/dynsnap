@@ -169,7 +169,9 @@ const entry = async () => {
         })
       })
     }
-    processItems([comment, ...comment.replies])
+    // CommentItem 继承自 CommentReplyItem，但宿主类对 addEventListener 的收窄签名
+    // 在 strictFunctionTypes 下不可逆变赋值，此处显式上转型。
+    processItems([comment, ...comment.replies] as CommentReplyItem[])
     comment.addEventListener('repliesUpdate', e => processItems(e.detail))
   }
   forEachCommentItem({

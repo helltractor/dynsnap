@@ -69,7 +69,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /** 暂停卡片内媒体，避免截到播放中的画面 / 声音继续播放 */
 const pauseMedia = (element: HTMLElement) => {
-  element.querySelectorAll('video, audio').forEach(media => {
+  element.querySelectorAll<HTMLMediaElement>('video, audio').forEach(media => {
     try {
       media.pause()
     } catch (error) {
@@ -116,8 +116,9 @@ const applyReflow = (element: HTMLElement, config: ReflowConfig) => {
       return null
     }
     grid = document.createElement('div')
-    grid.className = 'dynsnap-reflow-grid'
-    grid.style.cssText =
+    const gridEl = grid
+    gridEl.className = 'dynsnap-reflow-grid'
+    gridEl.style.cssText =
       'display:grid;' +
       `grid-template-columns:repeat(${config.columns || 3},1fr);` +
       `gap:${config.gap || 6}px;` +
@@ -131,7 +132,7 @@ const applyReflow = (element: HTMLElement, config: ReflowConfig) => {
       img.loading = 'eager'
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
       cell.appendChild(img)
-      grid.appendChild(cell)
+      gridEl.appendChild(cell)
     })
     prevDisplay = gallery.style.display
     gallery.style.display = 'none'
