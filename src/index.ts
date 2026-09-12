@@ -16,10 +16,12 @@ import { videoChange } from '@/core/observer'
 import { ShadowRootEvents } from '@/core/shadow-root'
 import { columnUrls, feedsUrls, videoUrls } from '@/core/utils/urls'
 import { captureElement } from './core/capture'
+import { scopedConsole } from './core/log'
 import { cardConfig, plainConfig } from './core/presets'
 import { addAreaButton } from './ui/area-button'
 
 const entry = async () => {
+  scopedConsole.info('组件已启用')
   // 动态卡片菜单: 截图动态（多图重排 + 底部留白）
   const { forEachFeedsCard, addMenuItem: addFeedsMenuItem } = await import('@/components/feeds/api')
   forEachFeedsCard({
