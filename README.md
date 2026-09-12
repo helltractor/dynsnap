@@ -10,16 +10,27 @@
 
 ---
 
-## 目录结构（简单 `src` 布局，内部统一使用 `@dynsnap/src` 别名）
+## 目录结构（`core` / `ui` 分层）
 
 ```
 dynsnap/
 ├── src/                    # 组件源码
-│   ├── index.ts            # 组件入口（defineComponentMetadata + entry + B 站预设）
-│   ├── capture.ts          # 截图核心（多图重排 / 底部留白 / 懒加载 / 媒体暂停 / PNG 导出）
+│   ├── index.ts            # 组件入口（defineComponentMetadata + entry 接线）
+│   ├── core/               # 领域层（无 DOM 注入逻辑）
+│   │   ├── model.ts        # 截图配置类型（CaptureConfig / ReflowConfig / PaddingConfig）
+│   │   ├── presets.ts      # B 站页面预设（动态卡片 / 评论 / 评论区）与排除清单
+│   │   ├── page-id.ts      # URL → 截图文件名 ID
+│   │   ├── reflow.ts       # 多图重排（横向图集 → 网格，截后还原）
+│   │   ├── padding.ts      # 底部留白（计算 + 应用 + 包装器降级）
+│   │   ├── capture.ts      # 截图管线（预处理 / 渲染 / PNG 导出）
+│   │   └── log.ts          # 组件名与 scoped console
+│   ├── ui/
+│   │   └── area-button.ts  # 评论区顶部「截图评论区」按钮注入（v1/v2/v3）
 │   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
 │   └── index.md            # 组件描述（编译时自动注入）
 ├── build.js                # ★ 构建脚本（纯 Node，无需 tsx / pnpm，复用 BE 的 webpack 与 babel）
+├── scripts/
+│   └── typecheck.js        # ★ 类型门禁（tsc --noEmit，仅统计 src/ 诊断）
 ├── test/                   # 无头浏览器测试（fixture / real-page）
 ├── dist/
 │   └── dynsnap.js          # ★ 组件产物（UMD，export: component）
@@ -28,7 +39,7 @@ dynsnap/
 │   ├── archify/            # 架构图源规范（JSON）
 │   └── architecture.md     # 与架构图对应的文字说明
 ├── package.json
-└── tsconfig.json           # @dynsnap/src 别名配置
+└── tsconfig.json           # 宿主 @/* 别名配置（指向 Bilibili-Evolved 仓库）
 ```
 
 ## 架构图
@@ -39,7 +50,7 @@ dynsnap/
 ## 构建（编译输出 JS 文件）
 
 需要本机有一个已安装依赖的 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 仓库
-（默认查找上级目录 `../Bilibili-Evolved`，也可用环境变量 `BILI_EVOLVED_PATH` 指定）：
+（默认查找 `dynsnap` 工作区根的兄弟目录 `Bilibili-Evolved`，也可用环境变量 `BILI_EVOLVED_PATH` 指定）：
 
 ```powershell
 # 前置: 在 Bilibili-Evolved 仓库执行过
@@ -68,7 +79,8 @@ description 注入与 `@/core` / `@/components` 等 externals，产物与官方 
 无头浏览器测试（Chrome / Edge + `puppeteer-core`）：
 
 ```powershell
-npm install          # 安装 puppeteer-core（仅测试用）
+npm install          # 安装 puppeteer-core（仅测试用）与 typescript（仅类型门禁用）
+npm run typecheck    # 类型门禁（需要 Bilibili-Evolved 仓库，与构建同一前置）
 npm test             # fixture + 真实页面
 DYN_SNAP_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
 ```
@@ -91,7 +103,7 @@ DYN_SNAP_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
 
 - 组件结构符合 [Bilibili-Evolved CONTRIBUTING.md](https://github.com/the1812/Bilibili-Evolved/blob/master/CONTRIBUTING.md) 的组件规范：
   `index.ts` 导出 `component`（`defineComponentMetadata`），`index.md` 作为描述，入口按需 `import()`。
-- 内部模块统一通过 `@dynsnap/src` 别名引用（`build.js` 与 `tsconfig.json` 中配置）。
+- 内部依赖单向分层：入口 `index.ts`（接线）→ `ui/`（评论区按钮注入）→ `core/`（模型 / 预设 / 管线）→ `snapdom.ts`，全部使用相对导入。
 - 动态卡片菜单参考 `registry/lib/components/feeds/copy-link`（`forEachFeedsCard` + `addMenuItem`）。
 - 评论菜单参考 `registry/lib/components/utils/comments/copy-link`（`forEachCommentItem` + `addMenuItem`，处理 `repliesUpdate`）。
 - 评论区顶部按钮参考 `registry/lib/components/utils/comments/image-export`（v1 / v2 / v3 评论区）。
@@ -101,9 +113,9 @@ DYN_SNAP_SKIP_REAL=1 npm test   # 跳过需要网络的真实页面测试
   | 原插件功能 | 组件现状 |
   |-----------|---------|
   | 动态卡片菜单「截图动态」 | ✅ `forEachFeedsCard` + `addMenuItem` |
-  | 多图重排（横向图集 → 网格） | ✅ `capture.ts` 中 `applyReflow`，截后还原 |
-  | 底部留白（头像距离 / header 兜底） | ✅ `calcBottomPadding` + 内联 padding / 包装器降级 |
-  | 懒加载图片触发、媒体暂停 | ✅ `triggerLazyImages` / `pauseMedia` |
+  | 多图重排（横向图集 → 网格） | ✅ `core/reflow.ts` 中 `applyReflow`，截后还原 |
+  | 底部留白（头像距离 / header 兜底） | ✅ `core/padding.ts` 中 `calcBottomPadding` + 内联 padding / 包装器降级 |
+  | 懒加载图片触发、媒体暂停 | ✅ `core/capture.ts` 中 `triggerLazyImages` / `pauseMedia` |
   | 排除菜单浮层 / 角标 | ✅ SnapDOM `exclude` |
   | 评论截图（含回复） | ✅ 新增，评论菜单「截图评论」 |
   | 评论区整块截图 | ✅ 新增，评论区顶部「截图评论区」 |

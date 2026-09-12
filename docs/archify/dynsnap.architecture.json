@@ -94,7 +94,7 @@
       "id": "dynsnap-component",
       "type": "backend",
       "label": "dynsnap 组件入口",
-      "sublabel": "src/index.ts",
+      "sublabel": "src/index.ts（接线）",
       "pos": [
         460,
         250
@@ -109,7 +109,7 @@
       "id": "capture-core",
       "type": "backend",
       "label": "截图核心",
-      "sublabel": "src/capture.ts",
+      "sublabel": "src/core/ + src/ui/",
       "pos": [
         670,
         250
@@ -169,7 +169,7 @@
       "id": "source-src",
       "type": "backend",
       "label": "组件源码 src/",
-      "sublabel": "index / capture / snapdom",
+      "sublabel": "index / core/ / ui/ / snapdom",
       "pos": [
         40,
         60

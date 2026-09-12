@@ -131,7 +131,6 @@ const main = () => {
       extensions: ['.tsx', '.ts', '.js', '.json'],
       alias: {
         '@': nodePath.join(beRoot, 'src'),
-        '@dynsnap/src': tempComponentDir,
       },
     },
     module: {
