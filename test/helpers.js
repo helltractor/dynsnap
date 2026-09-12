@@ -27,10 +27,13 @@ const findBrowser = () => {
 
 const launch = async () => {
   const puppeteer = require('puppeteer-core')
+  // DYN_SNAP_BROWSER_ARGS: 追加 Chromium 启动参数，如 --no-proxy-server
+  // （系统代理指向已失效的本地端口时，无头浏览器会 ERR_CONNECTION_CLOSED，需绕过）
+  const extraArgs = (process.env.DYN_SNAP_BROWSER_ARGS || '').split(' ').filter(Boolean)
   return puppeteer.launch({
     executablePath: findBrowser(),
     headless: 'new',
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    args: ['--no-sandbox', '--disable-dev-shm-usage', ...extraArgs],
   })
 }
 
