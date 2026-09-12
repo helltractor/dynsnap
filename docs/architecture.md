@@ -1,6 +1,6 @@
 # 架构与实现
 
-> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynsnap v0.0.6
+> [← 文档总览](index.md) · [交互式架构图](architecture.html) · dynsnap v0.1.0
 
 本文件与 `docs/architecture.html`（archify 生成的交互式架构图）一一对应。
 

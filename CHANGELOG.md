@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v0.1.0（重构：core / ui 分层 + 类型门禁）
+
+- **目录分层**：`src/` 由 3 个文件拆为分层结构——`core/`（`model` 配置模型 · `presets` B 站预设 ·
+  `page-id` 文件名解析 · `reflow` 多图重排 · `padding` 底部留白 · `capture` 截图管线 · `log` 日志）、
+  `ui/`（`area-button` 评论区按钮注入）。入口 `index.ts` 瘦身为纯接线（元数据 + 注册回调），
+  依赖单向：entry → ui → core → snapdom，无运行时环。
+- **预设去重**：`commentConfig` 与 `areaConfig` 此前完全相同，合并为 `plainConfig`。
+- **类型门禁**：新增 `npm run typecheck`（`scripts/typecheck.js`，本地 typescript devDependency）：
+  动态纳入宿主 `global.d.ts` 全局声明，只统计本项目 `src/` 的诊断；修复既有 3 处类型错误
+  （媒体元素查询类型、重排网格闭包窄化、评论项上转型）。
+- **JSDoc 统一**：导出按「一句话摘要 → 为什么 → 示例」结构书写（保留中文注释惯例）。
+- **卫生**：`.gitignore` 移除死条目 `pnpm-lock.yaml`、忽略 `.mimosa/` 与 visual-check 侧车证据；
+  移除失效的 `@dynsnap/src` 别名（tsconfig + build.js，改为相对导入）；入口补生命周期日志。
+- **文档**：README / architecture.md 同步新目录结构；archify 架构图按新分层重新生成
+  （v0.0.6 旧图归档至 `docs/archify/archive/`）。
+- **无行为变更**：离线 fixture 测试 14/14 通过，构建产物与组件行为保持一致。
+
 ## v0.0.6（测试 / 架构图 / Greasy Fork 分发）
 
 - 新增 **Greasy Fork 用户脚本产物** `dist/dynsnap.user.js`：由 `userscript/installer.js` 模板内嵌组件代码生成，
