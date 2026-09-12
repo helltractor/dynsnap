@@ -1,139 +1,23 @@
+/**
+ * 组件入口：注册与接线。
+ *
+ * 领域配置见 core/presets，截图管线见 core/capture，评论区按钮注入见 ui/area-button；
+ * 本文件只做三类事——组件元数据、把截图动作挂到 B 站的各类宿主入口（动态菜单 / 评论菜单 /
+ * 评论区按钮）、在宿主事件（videoChange / shadow DOM 更新）时保持按钮可用。
+ */
 import { defineComponentMetadata } from '@/components/define'
 import {
-  CommentArea,
   CommentAreaV3,
   CommentItem,
   CommentReplyItem,
 } from '@/components/utils/comment-apis'
 import type { FeedsCard } from '@/components/feeds/api'
 import { videoChange } from '@/core/observer'
-import { select } from '@/core/spin-query'
 import { ShadowRootEvents } from '@/core/shadow-root'
 import { columnUrls, feedsUrls, videoUrls } from '@/core/utils/urls'
-import { captureElement, CaptureConfig } from '@dynsnap/src/capture'
-
-const areaButtonClass = 'dynsnap-area-trigger'
-
-/** 菜单浮层 / 角标 / 注入按钮：截图时排除，避免截进图里 */
-const excludeSelectors = [
-  '.more-panel',
-  '.bili-dyn-more__menu',
-  '.opus-more__menu',
-  '.bili-dyn-item__more',
-  '.opus-more',
-  '.bili-cascader',
-  '.bili-dyn-card-video__cover__mask',
-  '.dyn-video-preview',
-  '.dynsnap-card',
-  '.dynsnap-comment',
-  `.${areaButtonClass}`,
-]
-
-const avatarSelector =
-  '.bili-dyn-item__avatar .b-avatar, .bili-dyn-item__avatar .bili-avatar, .b-avatar, .bili-avatar'
-
-/** 动态卡片：多图重排 + 头像底部留白（原插件核心能力） */
-const cardConfig: CaptureConfig = {
-  reflow: {
-    gallerySel: '.bili-dyn-gallery',
-    columns: 3,
-    gap: 6,
-    maxWidth: 540,
-    stripParams: true,
-  },
-  padding: {
-    paddingFn: element => {
-      const avatar = element.querySelector(avatarSelector) as HTMLElement | null
-      if (!avatar || avatar.offsetHeight === 0) {
-        return null
-      }
-      return Math.round(
-        avatar.getBoundingClientRect().top - element.getBoundingClientRect().top,
-      )
-    },
-    paddingRef:
-      '.bili-dyn-item__header, .bili-dyn-item__avatar, [class*="opus-card"] [class*="header"], [class*="opus-detail"] [class*="header"]',
-    paddingRatio: 0.6,
-  },
-  exclude: excludeSelectors,
-}
-
-/** 单条评论 / 回复：无需重排与留白 */
-const commentConfig: CaptureConfig = {
-  padding: false,
-  exclude: excludeSelectors,
-}
-
-/** 整个评论区 */
-const areaConfig: CaptureConfig = {
-  padding: false,
-  exclude: excludeSelectors,
-}
-
-/** 从当前 URL 提取用于文件名的页面 ID */
-const getPageId = () => {
-  const url = location.href
-  const videoMatch = url.match(/bilibili\.com\/video\/(BV[\w]+|av\d+)/i)
-  if (videoMatch) {
-    return videoMatch[1]
-  }
-  const opusMatch = url.match(/bilibili\.com\/opus\/(\d+)/)
-  if (opusMatch) {
-    return `opus_${opusMatch[1]}`
-  }
-  const columnMatch = url.match(/bilibili\.com\/read\/cv(\d+)/)
-  if (columnMatch) {
-    return `cv${columnMatch[1]}`
-  }
-  const detailMatch = url.match(/t\.bilibili\.com\/(\d+)/)
-  if (detailMatch) {
-    return detailMatch[1]
-  }
-  return String(Date.now())
-}
-
-/** 在评论区顶部注入「截图评论区」按钮（v1/v2/v3 评论区均支持） */
-const addAreaButton = async (area: CommentArea) => {
-  const { element } = area
-  const onClick = () => {
-    captureElement(element, `comments_${getPageId()}`, areaConfig)
-  }
-  if (element.tagName.toLowerCase() === 'bili-comments') {
-    // v3 评论区渲染在 shadow DOM 中, 按钮需注入到其头部
-    const headerRenderer = await select(() => {
-      const shadowRoot = element.shadowRoot?.querySelector(
-        'bili-comments-header-renderer',
-      )?.shadowRoot
-      return shadowRoot && shadowRoot.querySelectorAll('bili-text-button').length > 0
-        ? shadowRoot
-        : null
-    })
-    if (!headerRenderer || headerRenderer.querySelector(`.${areaButtonClass}`)) {
-      return
-    }
-    const button = document.createElement('bili-text-button')
-    button.className = areaButtonClass
-    button.textContent = '截图评论区'
-    button.addEventListener('click', onClick)
-    const buttons = headerRenderer.querySelectorAll('bili-text-button')
-    buttons[buttons.length - 1]?.after(button)
-    return
-  }
-  // v1 / v2 评论区
-  if (element.querySelector(`.${areaButtonClass}`)) {
-    return
-  }
-  const button = document.createElement('div')
-  button.className = `${areaButtonClass} bili-tabs__nav__item`
-  button.textContent = '截图评论区'
-  button.addEventListener('click', onClick)
-  const navContainer = element.querySelector('.bili-tabs__nav__items')
-  if (navContainer) {
-    navContainer.appendChild(button)
-  } else {
-    element.insertBefore(button, element.firstChild)
-  }
-}
+import { captureElement } from './core/capture'
+import { cardConfig, plainConfig } from './core/presets'
+import { addAreaButton } from './ui/area-button'
 
 const entry = async () => {
   // 动态卡片菜单: 截图动态（多图重排 + 底部留白）
@@ -164,7 +48,7 @@ const entry = async () => {
           className: 'dynsnap-comment',
           text: '截图评论',
           action: () => {
-            captureElement(item.element, `comment_${item.id}`, commentConfig)
+            captureElement(item.element, `comment_${item.id}`, plainConfig)
           },
         })
       })
