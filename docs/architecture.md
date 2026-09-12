@@ -13,12 +13,12 @@
 | 用户 | 外部 | 点击「截图动态 / 截图评论 / 截图评论区」 |
 | B 站页面 | 前端 | 动态卡片 / 评论区（含 Shadow DOM）/ opus 详情页 |
 | Bilibili-Evolved | 宿主运行时 | 提供 `coreApis` / `componentApis`：菜单注入、评论区监听、下载、通知 |
-| dynsnap 组件入口 | 后端 | `src/index.ts`：注册回调、B 站预设（`cardConfig` / `commentConfig` / `areaConfig`） |
-| 截图核心 | 后端 | `src/capture.ts`：多图重排、底部留白、懒加载、媒体暂停、排除项、PNG 导出 |
+| dynsnap 组件入口 | 后端 | `src/index.ts`：注册回调与接线，B 站预设见 `src/core/presets.ts` |
+| 截图核心 | 后端 | `src/core/`：多图重排（reflow）、底部留白（padding）、懒加载、媒体暂停、排除项、PNG 导出（capture）；配置模型（model）与日志（log）；`src/ui/area-button.ts` 注入评论区按钮 |
 | SnapDOM 引擎 | 后端 | `src/snapdom.ts`（v2.24.1，MIT，本地打包）：`toCanvas()` 渲染 |
 | B 站图片 CDN | 云服务 | `i0.hdslb.com` 等图床，`preCache` 转 dataURL 避免跨域污染 canvas |
 | PNG 下载 | 外部 | `DownloadPackage.single` 触发浏览器下载 |
-| 组件源码 src/ | 后端 | `index.ts` / `capture.ts` / `snapdom.ts` |
+| 组件源码 src/ | 后端 | `index.ts` / `core/`（model·presets·page-id·reflow·padding·capture·log）/ `ui/area-button.ts` / `snapdom.ts` |
 | 构建脚本 build.js | 后端 | 纯 Node，复用 BE 的 webpack + babel，输出单文件产物 |
 | 构建产物 dist/ | 后端 | `dynsnap.js`（组件 UMD，export: component） |
 
@@ -54,6 +54,9 @@ src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 
   `node_modules`（含 pnpm `.pnpm` 虚拟仓库）解析 webpack / babel，临时把 `src/`
   同步到 BE 的 `registry/lib/components/feeds/dynsnap`（以触发官方 description 注入），
   编译后清理并输出 UMD 组件。
+- **类型门禁 scripts/typecheck.js**：`npm run typecheck` 用 TypeScript API 做 `--noEmit`
+  全量检查，动态纳入 BE 的 `global.d.ts`（宿主全局声明），只统计本项目 `src/` 的诊断
+  （`@/*` 拉入的 BE 源码自身错误不归属本组件门禁）。
 - **组件产物**：`@/core/*`、`@/components/*`、`@/ui` 等被声明为 externals，
   运行时读取 BE 挂载的 `coreApis.*` / `coreApis.componentApis.*`，因此产物很轻。
 

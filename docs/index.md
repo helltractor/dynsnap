@@ -9,7 +9,7 @@
 ## 快速上手
 
 ```powershell
-# 1. 构建（需要已安装依赖的 Bilibili-Evolved 仓库，默认 ../Bilibili-Evolved）
+# 1. 构建（需要已安装依赖的 Bilibili-Evolved 仓库，默认取工作区根的兄弟目录）
 node build.js
 # 产物: dist/dynsnap.js —— 组件 JS，Bilibili-Evolved 组件管理里粘贴 URL 安装
 
