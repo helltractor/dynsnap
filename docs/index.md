@@ -4,6 +4,7 @@
 
 - [交互式架构图](architecture.html) —— 由 [archify](https://github.com/tt-a1i/archify) 生成，可缩放 / 搜索 / 按视图聚焦
 - [架构与实现](architecture.md) —— 与架构图对应的文字说明
+- [第三方引用声明](../THIRD-PARTY-NOTICES.md) —— SnapDOM 内嵌许可与 Bilibili-Evolved 出处说明
 - [测试](../test/) —— 无头浏览器测试套件（fixture / real-page）
 
 ## 快速上手

@@ -108,7 +108,7 @@ dynsnap/
 │   │   └── log.ts          # 组件名与 scoped console
 │   ├── ui/
 │   │   └── area-button.ts  # 评论区顶部「截图评论区」按钮注入（v1/v2/v3）
-│   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（MIT，本地打包）
+│   ├── snapdom.ts          # SnapDOM v2.24.1 引擎（vendored，MIT，本地打包）
 │   └── index.md            # 组件描述（编译时自动注入）
 ├── build.js                # 构建脚本（纯 Node，复用 BE 的 webpack 与 babel）
 ├── scripts/
@@ -131,8 +131,23 @@ dynsnap/
 - [架构与实现说明](docs/architecture.md) —— 与架构图对应的文字说明
 - 更新记录见 [CHANGELOG.md](CHANGELOG.md)
 
+## 引用与致谢
+
+本项目包含或参考了下列第三方代码，逐项说明出处与使用方式（完整声明与许可文本见
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)）：
+
+| 项目 | 使用方式 | 许可 |
+|------|----------|------|
+| [SnapDOM](https://github.com/zumerlab/snapdom) v2.24.1 | **整体内嵌**（vendored）于 [`src/snapdom.ts`](src/snapdom.ts)，随组件本地打包，运行时零网络依赖 | MIT © ZumerLab |
+| [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) | ① 运行时**宿主 API**：`@/core/*` 等导入声明为 externals，运行时读取 `coreApis.*`，BE 代码不随组件打包；② `build.js` **复刻**其官方 [description 注入](https://github.com/the1812/Bilibili-Evolved/blob/master/webpack/inject-metadata/description.ts)与 externals / UMD 产物约定 | MIT |
+| BE registry 组件 [feeds/copy-link](https://github.com/the1812/Bilibili-Evolved/tree/master/registry/lib/components/feeds/copy-link)、[utils/comments/copy-link](https://github.com/the1812/Bilibili-Evolved/tree/master/registry/lib/components/utils/comments/copy-link)、[utils/comments/image-export](https://github.com/the1812/Bilibili-Evolved/tree/master/registry/lib/components/utils/comments/image-export) | 动态卡片菜单 / 评论菜单 / 评论区按钮注入的**实现参考** | MIT |
+
+> 注：构建时 Terser 会剥离注释，分发产物 `dist/dynsnap.js` 中不含 SnapDOM 的原始许可头部，
+> 其许可以本仓库 `THIRD-PARTY-NOTICES.md` 为分发载体。
+
 ## 许可
 
-[MIT](LICENSE)；截图引擎 [SnapDOM](https://github.com/zumerlab/snapdom) © Zumerlab，MIT。
+本项目以 [MIT](LICENSE) 发布；第三方组件的出处与许可见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
+（截图引擎 [SnapDOM](https://github.com/zumerlab/snapdom) © ZumerLab，MIT，本地打包）。
 
 > 本项目为个人学习用途的第三方增强组件，与 B 站官方无关；使用时请遵守 B 站用户协议与相关法律法规。

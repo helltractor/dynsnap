@@ -58,7 +58,8 @@ const camelCase = name =>
     .replace(/[-_]+(\w)/g, (_, c) => c.toUpperCase())
     .replace(/^(\w)/, (_, c) => c.toLowerCase())
 
-// 同 Bilibili-Evolved webpack/inject-metadata/description.ts:
+// 复刻 Bilibili-Evolved 的官方 description 注入逻辑（MIT）:
+// https://github.com/the1812/Bilibili-Evolved/blob/master/webpack/inject-metadata/description.ts
 // 当入口 index.ts 旁存在 index.md 时, 自动注入 description（zh-CN 懒加载）。
 const injectDescription = () => ({
   visitor: {

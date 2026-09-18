@@ -82,3 +82,12 @@ npm test                      # 全部
 DYN_SNAP_SKIP_REAL=1 npm test # 跳过真实页面测试
 npm run test:fixture          # 仅离线 fixture
 ```
+
+## 七、引用与第三方代码
+
+- **SnapDOM v2.24.1（MIT © ZumerLab）**：整体内嵌于 `src/snapdom.ts`（vendored），随组件打包、零网络依赖；
+  渲染链路只使用 `toCanvas()` + `canvas.toBlob('image/png')`（`toBlob()` 输出 SVG、`toPng()` 返回 HTMLImageElement）。
+- **Bilibili-Evolved（MIT）**：运行时宿主（`@/core/*` 等 externals，不随组件打包）；`build.js` 复刻其官方
+  description 注入（`webpack/inject-metadata/description.ts`）与 externals / UMD 产物约定；菜单注入与评论区适配
+  参考 `feeds/copy-link`、`utils/comments/copy-link`、`utils/comments/image-export` 三个 registry 组件。
+- 完整声明见仓库根目录 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)。
