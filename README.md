@@ -86,8 +86,10 @@ npm run typecheck                 # 类型门禁（需要 Bilibili-Evolved 仓�
   校验 tag 与 `package.json` 版本一致 → 从 `CHANGELOG.md` 提取对应章节作为发布说明 →
   构建 `dist/dynsnap.js` → 创建 GitHub Release 并附上产物。
 
-分支保护与合并方式（仓库设置）：main 禁止直接推送，PR 需审阅通过 + 必需检查全绿；
-合并方式仅限 **merge commit / rebase**（squash 已禁用）。
+合并方式已在仓库设置强制：仅 **merge commit / rebase**（squash 已禁用），合并后自动删除 PR 分支。
+协作流程约定：PR 通过审阅与上述必需检查后合并，main 不直接推送。
+当前仓库为私有，免费计划不支持分支保护强制；转公开或升级 GitHub Pro 后，可在
+Settings → Branches → Add branch protection rule 启用（必需检查：`test (fixture)`、`typecheck`，要求 1 个审阅批准）。
 
 发布新版本的步骤：
 
