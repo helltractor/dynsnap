@@ -10,10 +10,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 离线 fixture 测试：无需 Bilibili-Evolved 仓库，ubuntu-latest 预装 google-chrome
+  # PR 必需检查（分支保护）：离线 fixture 回归。
+  # 测试对象是仓库内 tracked 的 dist/dynsnap.js（基线回归）；
+  # 本次变更源码的产物回归在合并进 main 后由 build-and-test 完成。
   test:
     name: test (fixture)
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,8 +29,8 @@ jobs:
           DYN_SNAP_SKIP_REAL: '1'
           DYN_SNAP_BROWSER: /usr/bin/google-chrome
 
-  # 类型门禁：tsconfig 的 @/* 路径与 scripts/typecheck.js 都指向宿主仓库，
-  # 此处浅检出 Bilibili-Evolved 并链接到 tsconfig 期望的 ../../Bilibili-Evolved
+  # PR 必需检查（分支保护）+ main 合并态安全网：
+  # 构建走 babel（只剥类型不校验），类型门禁是真正的语义门
   typecheck:
     name: typecheck
     runs-on: ubuntu-latest
@@ -50,10 +53,11 @@ jobs:
         env:
           BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
 
-  # dist 构建：复刻本地前置（Bilibili-Evolved + pnpm install），验证组件可编译
-  build:
-    name: build dist
+  # 合版后在主分支完成任务构建：BE 工具链构建 dist，并立即用新产物跑 fixture 回归
+  build-and-test:
+    name: build & test dist
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
       - name: Checkout host repo (Bilibili-Evolved)
@@ -78,10 +82,16 @@ jobs:
         run: |
           pnpm --dir host/Bilibili-Evolved install
           pnpm --dir host/Bilibili-Evolved/registry install
+      - run: npm ci
       - name: Build dist/dynsnap.js
         run: node build.js
         env:
           BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+      - name: Fixture tests against fresh dist
+        run: npm test
+        env:
+          DYN_SNAP_SKIP_REAL: '1'
+          DYN_SNAP_BROWSER: /usr/bin/google-chrome
       - uses: actions/upload-artifact@v4
         with:
           name: dynsnap.js

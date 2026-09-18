@@ -77,9 +77,17 @@ npm run typecheck                 # 类型门禁（需要 Bilibili-Evolved 仓�
 
 ## CI / 发布
 
-- **CI**（`.github/workflows/ci.yml`）：push / PR 时并行执行 fixture 测试（离线）、类型门禁、dist 构建验证。
+- **PR 门禁**（`.github/workflows/ci.yml`）：PR 须通过两个必需检查——
+  `test (fixture)`（离线 fixture 回归，对象为仓库内 tracked 的 dist，即基线回归）与
+  `typecheck`（类型门禁；构建走 babel 只剥类型不校验，类型门禁是真正的语义门）。
+- **合版构建**：PR 合并进 main 后，CI 在主分支完成 dist 构建，并立即用**新构建的产物**
+  跑 fixture 回归（`build & test dist` job），产物随 workflow artifact 存档。
 - **发布**（`.github/workflows/release.yml`）：推送 `v*` tag 时自动完成——
-  校验 tag 与 `package.json` 版本一致 → 从 `CHANGELOG.md` 提取对应章节作为发布说明 → 构建 `dist/dynsnap.js` → 创建 GitHub Release 并附上产物。
+  校验 tag 与 `package.json` 版本一致 → 从 `CHANGELOG.md` 提取对应章节作为发布说明 →
+  构建 `dist/dynsnap.js` → 创建 GitHub Release 并附上产物。
+
+分支保护与合并方式（仓库设置）：main 禁止直接推送，PR 需审阅通过 + 必需检查全绿；
+合并方式仅限 **merge commit / rebase**（squash 已禁用）。
 
 发布新版本的步骤：
 
