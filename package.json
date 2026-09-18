@@ -1,8 +1,27 @@
 {
   "name": "dynsnap",
   "version": "0.1.0",
-  "private": true,
-  "description": "Bilibili-Evolved 组件: 动态与评论截图",
+  "description": "Bilibili-Evolved 组件：动态卡片 / 单条评论 / 评论区一键截图（SnapDOM 引擎，本地打包零网络依赖）",
+  "license": "MIT",
+  "author": {
+    "name": "helltractor",
+    "url": "https://github.com/helltractor"
+  },
+  "keywords": [
+    "bilibili",
+    "bilibili-evolved",
+    "component",
+    "screenshot",
+    "snapdom"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/helltractor/dynsnap.git"
+  },
+  "bugs": {
+    "url": "https://github.com/helltractor/dynsnap/issues"
+  },
+  "homepage": "https://github.com/helltractor/dynsnap#readme",
   "scripts": {
     "build": "node build.js",
     "typecheck": "node scripts/typecheck.js",
@@ -13,6 +32,5 @@
   "devDependencies": {
     "puppeteer-core": "^23.11.1",
     "typescript": "^5.8.3"
-  },
-  "license": "MIT"
+  }
 }

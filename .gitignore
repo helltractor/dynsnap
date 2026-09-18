@@ -1,3 +1,17 @@
 node_modules/
 .mimosa/
+
+# 架构图视觉校验侧车证据（本地生成，不入库）
 docs/architecture.visual-check.*
+
+# 发布流程中间产物
+release-notes.md
+
+# 环境与日志
+.env
+.env.*
+*.log
+
+# 操作系统
+.DS_Store
+Thumbs.db

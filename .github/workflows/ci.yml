@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 离线 fixture 测试：无需 Bilibili-Evolved 仓库，ubuntu-latest 预装 google-chrome
+  test:
+    name: test (fixture)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          DYN_SNAP_SKIP_REAL: '1'
+          DYN_SNAP_BROWSER: /usr/bin/google-chrome
+
+  # 类型门禁：tsconfig 的 @/* 路径与 scripts/typecheck.js 都指向宿主仓库，
+  # 此处浅检出 Bilibili-Evolved 并链接到 tsconfig 期望的 ../../Bilibili-Evolved
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout host repo (Bilibili-Evolved)
+        uses: actions/checkout@v4
+        with:
+          repository: the1812/Bilibili-Evolved
+          ref: master
+          path: host/Bilibili-Evolved
+      - name: Link host repo to tsconfig expected path
+        run: ln -s "$GITHUB_WORKSPACE/host/Bilibili-Evolved" "$GITHUB_WORKSPACE/../../Bilibili-Evolved"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+        env:
+          BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+
+  # dist 构建：复刻本地前置（Bilibili-Evolved + pnpm install），验证组件可编译
+  build:
+    name: build dist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout host repo (Bilibili-Evolved)
+        uses: actions/checkout@v4
+        with:
+          repository: the1812/Bilibili-Evolved
+          ref: master
+          path: host/Bilibili-Evolved
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-be-${{ runner.os }}-${{ hashFiles('host/Bilibili-Evolved/pnpm-lock.yaml', 'host/Bilibili-Evolved/registry/pnpm-lock.yaml') }}
+          restore-keys: pnpm-be-${{ runner.os }}-
+      - name: Install host dependencies
+        run: |
+          pnpm --dir host/Bilibili-Evolved install
+          pnpm --dir host/Bilibili-Evolved/registry install
+      - name: Build dist/dynsnap.js
+        run: node build.js
+        env:
+          BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dynsnap.js
+          path: dist/dynsnap.js

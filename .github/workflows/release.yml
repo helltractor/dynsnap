@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build dist & release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify tag matches package.json version
+        run: |
+          node -e "const {version} = require('./package.json'); if (process.env.GITHUB_REF_NAME !== 'v' + version) { console.error('标签 ' + process.env.GITHUB_REF_NAME + ' 与 package.json 版本 v' + version + ' 不一致'); process.exit(1); }"
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+      - name: Extract release notes from CHANGELOG
+        run: node scripts/release-notes.js
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+      - name: Checkout host repo (Bilibili-Evolved)
+        uses: actions/checkout@v4
+        with:
+          repository: the1812/Bilibili-Evolved
+          ref: master
+          path: host/Bilibili-Evolved
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-be-${{ runner.os }}-${{ hashFiles('host/Bilibili-Evolved/pnpm-lock.yaml', 'host/Bilibili-Evolved/registry/pnpm-lock.yaml') }}
+          restore-keys: pnpm-be-${{ runner.os }}-
+      - name: Install host dependencies
+        run: |
+          pnpm --dir host/Bilibili-Evolved install
+          pnpm --dir host/Bilibili-Evolved/registry install
+      - name: Build dist/dynsnap.js
+        run: node build.js
+        env:
+          BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/dynsnap.js
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
