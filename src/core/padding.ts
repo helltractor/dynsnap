@@ -60,7 +60,9 @@ export const calcBottomPadding = (element: HTMLElement, config: CaptureConfig) =
       }
     }
   }
-  return config.bottomPadding ?? paddingDefaults.bottomPadding
+  // 兜底值同样过 clamp：显式配置的 bottomPadding 也应收敛到 [min, max]，
+  // 否则负数会被原样写进 padding-bottom（浏览器直接忽略，留白静默失效）。
+  return clamp(config.bottomPadding ?? paddingDefaults.bottomPadding) ?? min
 }
 
 /**
@@ -89,8 +91,12 @@ const applyPadViaWrapper = (element: HTMLElement, pad: number) => {
   if (!element.parentNode) {
     throw new Error('元素不在文档中，无法应用包装器留白')
   }
+  // 记录原始锚点：截图期间宿主可能重渲染，wrap 会随之脱离文档，
+  // 那时只能靠这对锚点把元素放回原位（见 cleanup 的兜底分支）。
+  const originalParent = element.parentNode
+  const originalNext = element.nextSibling
   element.style.margin = '0'
-  element.parentNode.insertBefore(wrap, element)
+  originalParent.insertBefore(wrap, element)
   wrap.appendChild(element)
   return {
     wrap,
@@ -103,6 +109,18 @@ const applyPadViaWrapper = (element: HTMLElement, pad: number) => {
       if (wrap.parentNode) {
         wrap.parentNode.insertBefore(element, wrap)
         wrap.remove()
+        return
+      }
+      // wrap 已脱离文档（宿主重渲染）：不还原的话元素会被困在游离节点里，
+      // 页面上表现为「截完图这条评论消失了」，且没有任何提示。
+      wrap.remove()
+      if (originalParent.isConnected) {
+        // 原锚点可能也已被移除，此时 insertBefore 会抛 NotFoundError，退化为追加到末尾
+        const anchor = originalNext && originalNext.parentNode === originalParent ? originalNext : null
+        originalParent.insertBefore(element, anchor)
+        scopedConsole.warn('包装器已脱离文档，元素已还原到原位置')
+      } else {
+        scopedConsole.warn('包装器与元素原父节点均已脱离文档，无法还原元素位置')
       }
     },
   }

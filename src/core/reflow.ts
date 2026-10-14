@@ -14,6 +14,17 @@ export interface ReflowContext {
   cleanup: () => void
 }
 
+/** 去掉 B 站 CDN 图片 URL 上 '@' 后的压缩参数取原图 */
+const stripCdnParams = (src: string) => {
+  // data: / blob: 等内联 URL 原样返回：它们的正文里合法出现 '@'，
+  // 按 '@' 截断会把图片数据切坏（截出来是空白格）。
+  if (!/^https?:\/\//i.test(src)) {
+    return src
+  }
+  const at = src.indexOf('@')
+  return at < 0 ? src : src.slice(0, at)
+}
+
 /** 触发多图重排，返回 null 表示无图集 / 单图 / 重排失败（均已安全跳过） */
 export const applyReflow = (element: HTMLElement, config: ReflowConfig): ReflowContext | null => {
   let gallery: HTMLElement | null = null
@@ -27,7 +38,7 @@ export const applyReflow = (element: HTMLElement, config: ReflowConfig): ReflowC
     const urls = [...gallery.querySelectorAll('img')]
       .map(img => {
         const src = img.currentSrc || img.src || ''
-        return config.stripParams === false ? src : src.split('@')[0]
+        return config.stripParams === false ? src : stripCdnParams(src)
       })
       .filter(Boolean)
     if (urls.length < 2) {

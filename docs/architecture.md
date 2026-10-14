@@ -66,7 +66,12 @@ src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 
   只有 `toCanvas()` + `canvas.toBlob` 能得到真正的 PNG（否则下载到的是「假 PNG」）。
 - **opus 详情页**：原插件跳转 `t.bilibili.com/{id}` 的方案已不可用（该站现要求登录），
   改为就地截图 `.bili-opus-view`；长文会得到很高的长图（SnapDOM 在 16384px 处等比缩放）。
-- **尺寸保护**：目标边长 > 12000px 时降为 1 倍率，> 24000px 时拒绝并提示改用单条评论截图。
+- **尺寸保护**：目标边长 > 12000px 时降为 1 倍率；边长 > 24000px **或总面积 > 2.4e8 px**
+  （Chromium 画布约 2.68e8）时拒绝并提示改用单条评论截图。只判单边会漏掉 20000×20000
+  这类内容——它能通过边长检查，最终以「canvas.toBlob 导出失败」收场，丢失替代方案提示。
+- **失败路径**：预缓存 / 渲染 / 导出 / 下载四类宿主调用都有超时上限（`timeoutMs`，默认 60s），
+  避免宿主挂起让模块级 `capturing` 永久为 true；`finally` 中每个还原步骤独立兜底，
+  任一步抛错都不阻断后续还原与解锁。
 
 ## 六、测试
 
@@ -74,8 +79,12 @@ src/ ──build.js──▶ dist/dynsnap.js ──▶ BE 组件管理（粘贴 
 
 | 套件 | 内容 |
 |------|------|
-| `fixture.test.js` | 离线 fixture：多图重排像素级校验、底部留白、头像入图、DOM 还原、评论截图、v3/v1 评论区按钮 |
+| `fixture.test.js` | 离线 fixture（30 项断言）：多图重排像素级校验、底部留白、头像入图、DOM 还原、评论截图、v3/v1 评论区按钮；另覆盖失败路径——超时放行、边长/面积守卫、懒加载两种写法与 `srcset` 还原、媒体播放恢复、评论菜单去重、`repliesUpdate`、v3 更新事件 + debounce、`videoChange` 重新注入 |
 | `real-page.test.js` | 真实页面（需网络）：opus 详情页 / t.bilibili.com 动态详情页截图 |
+
+测试对象是 `dist/dynsnap.js`（先 `node build.js`）。固定 sleep 已改为轮询等待，避免慢机器上的偶发失败；
+测试桩提供真实的 `debounce` 与 `CommentAreaV3` 实例，否则 `instanceof CommentAreaV3` 恒为 false，
+v3 更新事件那条路径会完全没有覆盖。
 
 ```powershell
 npm test                      # 全部

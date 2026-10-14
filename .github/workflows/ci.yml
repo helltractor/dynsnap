@@ -10,21 +10,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # PR 必需检查（分支保护）：离线 fixture 回归。
-  # 测试对象是仓库内 tracked 的 dist/dynsnap.js（基线回归）；
-  # 本次变更源码的产物回归在合并进 main 后由 build-and-test 完成。
+  # PR 必需检查（分支保护）：从源码构建后跑离线 fixture。
+  # 必须自己构建：测试对象若是仓库内 tracked 的 dist/dynsnap.js，
+  # 「改了 src 但忘了重建产物」的 PR 依然会全绿。
   test:
     name: test (fixture)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout host repo (Bilibili-Evolved)
+        uses: actions/checkout@v4
+        with:
+          repository: the1812/Bilibili-Evolved
+          ref: master
+          path: host/Bilibili-Evolved
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-be-${{ runner.os }}-${{ hashFiles('host/Bilibili-Evolved/pnpm-lock.yaml', 'host/Bilibili-Evolved/registry/pnpm-lock.yaml') }}
+          restore-keys: pnpm-be-${{ runner.os }}-
+      - name: Install host dependencies
+        run: |
+          pnpm --dir host/Bilibili-Evolved install
+          pnpm --dir host/Bilibili-Evolved/registry install
       - run: npm ci
-      - run: npm test
+      - name: Build dist/dynsnap.js from source
+        run: node build.js
+        env:
+          BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+      # dist/dynsnap.js 是 tracked 的，且其 raw URL 就是安装入口，
+      # 因此提交进仓库的产物必须与源码同步，否则用户装到的是旧版本。
+      - name: Verify committed dist matches source build
+        run: |
+          if ! git diff --exit-code -- dist/dynsnap.js; then
+            echo '::error::dist/dynsnap.js 与源码不同步，请在本地执行 node build.js 后提交产物'
+            exit 1
+          fi
+      - name: Fixture tests against fresh dist
+        run: npm test
         env:
           DYN_SNAP_SKIP_REAL: '1'
           DYN_SNAP_BROWSER: /usr/bin/google-chrome

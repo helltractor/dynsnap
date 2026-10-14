@@ -27,7 +27,8 @@
 ## 从源码构建
 
 构建复用 [Bilibili-Evolved](https://github.com/the1812/Bilibili-Evolved) 仓库的 webpack / babel 工具链：
-需要本机有**已安装依赖**的 BE 仓库（默认查找上级目录 `Bilibili-Evolved`，或用 `BILI_EVOLVED_PATH` 指定）。
+需要本机有**已安装依赖**的 BE 仓库（默认查找本项目**上两级目录**下的 `Bilibili-Evolved`，
+即工作区根的兄弟目录；或用 `BILI_EVOLVED_PATH` 指定）。
 `build.js` 为纯 Node 实现，产物与官方 dev-server 编译的组件格式一致。
 
 ```powershell

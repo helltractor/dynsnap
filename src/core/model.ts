@@ -48,4 +48,6 @@ export interface CaptureConfig {
   padding?: PaddingConfig | false
   /** SnapDOM exclude 选择器（菜单浮层/角标等） */
   exclude?: string[]
+  /** 单次宿主调用（预缓存 / 渲染 / 导出 / 下载）的超时上限 ms，默认 60000 */
+  timeoutMs?: number
 }

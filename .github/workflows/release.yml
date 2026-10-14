@@ -47,10 +47,22 @@ jobs:
         run: |
           pnpm --dir host/Bilibili-Evolved install
           pnpm --dir host/Bilibili-Evolved/registry install
+      - run: npm ci
       - name: Build dist/dynsnap.js
         run: node build.js
         env:
           BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+      # tag push 不会触发 ci.yml（后者只监听 main 分支的 push），
+      # 所以发布链路必须自己跑门禁，否则会发布一个从未校验过的产物。
+      - name: Typecheck
+        run: npm run typecheck
+        env:
+          BILI_EVOLVED_PATH: ${{ github.workspace }}/host/Bilibili-Evolved
+      - name: Fixture tests against fresh dist
+        run: npm test
+        env:
+          DYN_SNAP_SKIP_REAL: '1'
+          DYN_SNAP_BROWSER: /usr/bin/google-chrome
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

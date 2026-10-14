@@ -6,6 +6,10 @@
  *   shadow root 中，且头部可能晚于评论区出现，需要 spin-query 等待；
  * - v1 / v2：普通 DOM，按钮追加到 tabs 导航。
  * 注入前都查重，配合宿主的重复回调（videoChange / shadow 更新事件）不会注入第二个按钮。
+ *
+ * 查重分两层：DOM 查重负责「已注入」，pending 集合负责「正在注入」。
+ * v3 分支要 await spin-query，多个调用会在同一个等待窗口里都通过 DOM 查重，
+ * 没有 pending 集合就会注入出两个按钮。
  */
 import { select } from '@/core/spin-query'
 import type { CommentArea } from '@/components/utils/comment-apis'
@@ -13,45 +17,63 @@ import { captureElement } from '../core/capture'
 import { getPageId } from '../core/page-id'
 import { areaButtonClass, plainConfig } from '../core/presets'
 
+/** 正在注入中的评论区元素（await 期间防重入） */
+const pending = new WeakSet<HTMLElement>()
+
 /** 在评论区顶部注入「截图评论区」按钮（v1/v2/v3 评论区均支持） */
 export const addAreaButton = async (area: CommentArea) => {
   const { element } = area
-  const onClick = () => {
-    captureElement(element, `comments_${getPageId()}`, plainConfig)
+  if (pending.has(element)) {
+    return
   }
-  if (element.tagName.toLowerCase() === 'bili-comments') {
-    // v3 评论区渲染在 shadow DOM 中, 按钮需注入到其头部
-    const headerRenderer = await select(() => {
-      const shadowRoot = element.shadowRoot?.querySelector(
-        'bili-comments-header-renderer',
-      )?.shadowRoot
-      return shadowRoot && shadowRoot.querySelectorAll('bili-text-button').length > 0
-        ? shadowRoot
-        : null
-    })
-    if (!headerRenderer || headerRenderer.querySelector(`.${areaButtonClass}`)) {
+  pending.add(element)
+  try {
+    const onClick = () => {
+      captureElement(element, `comments_${getPageId()}`, plainConfig)
+    }
+    if (element.tagName.toLowerCase() === 'bili-comments') {
+      // v3 评论区渲染在 shadow DOM 中, 按钮需注入到其头部
+      const headerRenderer = await select(() => {
+        const shadowRoot = element.shadowRoot?.querySelector(
+          'bili-comments-header-renderer',
+        )?.shadowRoot
+        return shadowRoot && shadowRoot.querySelectorAll('bili-text-button').length > 0
+          ? shadowRoot
+          : null
+      })
+      if (!headerRenderer || headerRenderer.querySelector(`.${areaButtonClass}`)) {
+        return
+      }
+      const button = document.createElement('bili-text-button')
+      button.className = areaButtonClass
+      button.textContent = '截图评论区'
+      button.addEventListener('click', onClick)
+      const buttons = headerRenderer.querySelectorAll('bili-text-button')
+      const lastButton = buttons[buttons.length - 1]
+      if (lastButton) {
+        lastButton.after(button)
+      } else {
+        // select 的判据与这里重新查询之间存在窗口，lit 组件可能刚清空按钮列表。
+        // 直接 append 保证按钮一定进入文档，避免「已创建、已绑事件、但无入口」。
+        headerRenderer.appendChild(button)
+      }
       return
     }
-    const button = document.createElement('bili-text-button')
-    button.className = areaButtonClass
+    // v1 / v2 评论区
+    if (element.querySelector(`.${areaButtonClass}`)) {
+      return
+    }
+    const button = document.createElement('div')
+    button.className = `${areaButtonClass} bili-tabs__nav__item`
     button.textContent = '截图评论区'
     button.addEventListener('click', onClick)
-    const buttons = headerRenderer.querySelectorAll('bili-text-button')
-    buttons[buttons.length - 1]?.after(button)
-    return
-  }
-  // v1 / v2 评论区
-  if (element.querySelector(`.${areaButtonClass}`)) {
-    return
-  }
-  const button = document.createElement('div')
-  button.className = `${areaButtonClass} bili-tabs__nav__item`
-  button.textContent = '截图评论区'
-  button.addEventListener('click', onClick)
-  const navContainer = element.querySelector('.bili-tabs__nav__items')
-  if (navContainer) {
-    navContainer.appendChild(button)
-  } else {
-    element.insertBefore(button, element.firstChild)
+    const navContainer = element.querySelector('.bili-tabs__nav__items')
+    if (navContainer) {
+      navContainer.appendChild(button)
+    } else {
+      element.insertBefore(button, element.firstChild)
+    }
+  } finally {
+    pending.delete(element)
   }
 }

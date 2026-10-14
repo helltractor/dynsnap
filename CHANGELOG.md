@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## Unreleased（稳定性加固）
+
+- **失败路径不再卡死**：截图管线新增超时上限（`timeoutMs`，默认 60s），覆盖预缓存 / 渲染 /
+  导出 / 下载四类宿主调用。此前宿主挂起会让模块级 `capturing` 永久为 true，之后每次截图都
+  只能提示「已有截图进行中」。`finally` 中每个还原步骤（留白 / 重排 / 懒加载属性 / 媒体播放 /
+  提示）改为独立兜底，任一步抛错都不阻断后续还原与解锁。
+- **图片等待取代固定 sleep**：新增 `waitForImages`，等待未完成图片加载，全部完成或超时
+  （`imageWaitMs`，默认 2s）都会继续渲染，慢图不再截成空白。
+- **懒加载还原**：`triggerLazyImages` 现在覆盖「占位图 + `data-src`」写法（此前只判 `src` 为空，
+  真图永不加载），并清除优先级更高的 `srcset`；`loading` / `srcset` 在截图后还原，
+  被暂停的媒体恢复播放。
+- **尺寸守卫补面积维度**：除单边 24000px 上限外，新增总面积上限（2.4e8 px，Chromium 画布
+  约 2.68e8）。此前 20000×20000 这类内容能通过单边检查，最终以「canvas.toBlob 导出失败」
+  收场，丢失了「请使用单条评论截图」的替代方案提示。
+- **评论菜单去重**：宿主会对同一条评论重复回调（评论区重建 / 重新观察），新增 `seenComments`
+  WeakSet 去重，避免 `repliesUpdate` 重复绑定。
+- **评论区按钮注入竞态**：新增 `pending` WeakSet 覆盖「正在注入」窗口（v3 需等待 shadow DOM，
+  后台标签页下 `select` 轮询可能长达数十秒），此前该窗口内会注入出两个按钮；
+  列表为空时退化为追加到头部，不再静默丢弃按钮。
+- **还原路径兜底**：留白包装器若因宿主重渲染脱离文档，元素会还原到原父节点并告警，
+  不再静默留在文档外。
+- **元数据**：`urlInclude` 改用 `allVideoUrls`（含番剧 / 课程），这些页面的评论区此前
+  因组件级门禁拿不到按钮。
+- **构建安全**：`build.js` 在临时目录写 `.dynsnap-temp` 标记，只清理自己创建的目录；
+  目录已存在且无标记时中止构建，避免误删 BE 仓库 `registry/` 下的同名手写组件。
+  新增 `SIGINT` / `SIGTERM` / `exit` 清理，Ctrl+C 不再残留临时目录。
+- **构建可复现**：拷贝到临时目录的源码统一归一化为 LF。产物内嵌 `index.md` 正文
+  （description 注入），而 Windows 上 `core.autocrlf=true` 会把工作区检出成 CRLF，
+  同一份源码在 Windows 与 Linux 上会构建出字节不同的产物——「产物与源码同步」校验
+  因此会本机通过、CI 失败。归一化后两平台产物逐字节一致（已验证 CRLF 工作区构建结果
+  与已提交的 LF 产物 SHA256 相同）。
+- **CI / 发布门禁**：PR 任务改为从源码构建后再跑 fixture，并校验 `dist/dynsnap.js` 与源码同步
+  （产物 tracked 且 raw URL 是安装入口，不同步会发旧版本）；`release.yml` 补跑
+  `typecheck` + fixture——tag push 不触发 `ci.yml`，此前会发布从未校验过的产物。
+- **测试**：fixture 断言由 14 增至 30，覆盖超时 / 面积守卫 / 懒加载两种写法 / 媒体恢复 /
+  评论菜单去重 / `repliesUpdate` / v3 更新事件 + debounce / `videoChange` 重新注入；
+  测试桩补齐 `CommentAreaV3` 与真实 `debounce`，此前 `instanceof CommentAreaV3` 恒为 false，
+  上述路径零覆盖。固定 sleep 改为轮询等待，消除慢机器偶发失败。
+- **文档**：README 修正 BE 仓库查找路径（默认是上两级目录，非「上级目录」）。
+
 ## v0.1.0（重构：core / ui 分层 + 类型门禁）
 
 - **目录分层**：`src/` 由 3 个文件拆为分层结构——`core/`（`model` 配置模型 · `presets` B 站预设 ·

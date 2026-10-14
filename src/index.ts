@@ -14,7 +14,7 @@ import {
 import type { FeedsCard } from '@/components/feeds/api'
 import { videoChange } from '@/core/observer'
 import { ShadowRootEvents } from '@/core/shadow-root'
-import { columnUrls, feedsUrls, videoUrls } from '@/core/utils/urls'
+import { allVideoUrls, columnUrls, feedsUrls } from '@/core/utils/urls'
 import { captureElement } from './core/capture'
 import { scopedConsole } from './core/log'
 import { cardConfig, plainConfig } from './core/presets'
@@ -43,7 +43,14 @@ const entry = async () => {
     addMenuItem: addCommentMenuItem,
     commentAreaManager,
   } = await import('@/components/utils/comment-apis')
+  // 宿主可能对同一条评论重复回调（评论区重建 / 重新观察），
+  // 已处理过的评论不再挂监听，避免 repliesUpdate 被重复绑定、菜单项重复注入。
+  const seenComments = new WeakSet<CommentItem>()
   const addCommentScreenshotItem = (comment: CommentItem) => {
+    if (seenComments.has(comment)) {
+      return
+    }
+    seenComments.add(comment)
     const processItems = (items: CommentReplyItem[]) => {
       items.forEach(item => {
         addCommentMenuItem(item, {
@@ -90,6 +97,8 @@ export const component = defineComponentMetadata({
     link: 'https://github.com/helltractor',
   },
   entry,
-  urlInclude: [...videoUrls, ...columnUrls, ...feedsUrls],
+  // allVideoUrls = videoUrls + 番剧 + 课程：番剧播放页也有评论区，
+  // 用 videoUrls 会让这些页面上连菜单项都不出现（urlInclude 是组件级门禁）。
+  urlInclude: [...allVideoUrls, ...columnUrls, ...feedsUrls],
   tags: [componentsTags.feeds, componentsTags.utils],
 })

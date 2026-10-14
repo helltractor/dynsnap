@@ -47,8 +47,17 @@ const loadComponent = async (page, config) => {
 /** 注入 Bilibili-Evolved 运行时 API 桩，并把组件回调指向页面上真实存在的元素 */
 const buildStub = config => {
   const cfg = config || {}
-  window.__dynsnap = { saved: [], errors: [] }
-  window.lodash = { debounce: fn => fn }
+  window.__dynsnap = { saved: [], errors: [], commentItems: [], areas: [] }
+  // 真 debounce（保留 wait）：桩若直接返回原函数，300ms 防抖路径不会被真正走到
+  window.lodash = {
+    debounce: (fn, wait) => {
+      let timer
+      return (...args) => {
+        clearTimeout(timer)
+        timer = setTimeout(() => fn(...args), wait || 0)
+      }
+    },
+  }
   window.componentsTags = { feeds: 'feeds', utils: 'utils', video: 'video' }
   const toast = {
     info: message => ({ close() {}, message }),
@@ -59,6 +68,8 @@ const buildStub = config => {
     },
   }
   const queryAll = selector => (selector ? [...document.querySelectorAll(selector)] : [])
+  // 评论区管理器：组件通过它拿到全部区域（refreshAreaButtons / videoChange 路径）
+  const commentAreaManager = { commentAreas: [] }
   const addButton = (host, text, action) => {
     const button = document.createElement('button')
     button.className = `dynsnap-test-${text}`
@@ -75,7 +86,12 @@ const buildStub = config => {
       },
     },
     toast: { Toast: toast },
-    observer: { videoChange: () => {} },
+    // 记录 videoChange 回调，测试里手动触发，验证 SPA 换页后按钮会重新注入
+    observer: {
+      videoChange: callback => {
+        window.__dynsnap.videoChange = callback
+      },
+    },
     spinQuery: {
       select: async fn => {
         for (let i = 0; i < 40; i++) {
@@ -88,7 +104,9 @@ const buildStub = config => {
     },
     shadowRoot: { ShadowRootEvents: { Updated: 'dynsnap-updated' } },
     utils: {
-      urls: { videoUrls: [], columnUrls: [], feedsUrls: [] },
+      // 组件元数据用的是 allVideoUrls（含番剧/课程），桩必须提供同名导出，
+      // 否则 index.ts 展开时读到 undefined 直接抛 TypeError。
+      urls: { allVideoUrls: [], videoUrls: [], columnUrls: [], feedsUrls: [] },
       log: { useScopedConsole: () => console },
     },
     componentApis: {
@@ -105,16 +123,49 @@ const buildStub = config => {
       },
       utils: {
         commentApis: {
+          // 宿主会对同一条评论重复回调（评论区重建 / 重新观察）：
+          // 这里刻意回调两次，用于验证组件的 seenComments 去重。
           forEachCommentItem: ({ added }) => {
             queryAll(cfg.comments).forEach((element, index) => {
-              const item = { id: `comment${index}`, element, replies: [], addEventListener: () => {} }
+              const item = {
+                id: `comment${index}`,
+                element,
+                replies: [],
+                listeners: {},
+                addEventListener(type, listener) {
+                  this.listeners[type] = listener
+                },
+              }
+              window.__dynsnap.commentItems.push(item)
+              added(item)
               added(item)
             })
           },
-          forEachCommentArea: callback => queryAll(cfg.areas).forEach(element => callback({ element })),
+          // v3 区域返回 CommentAreaV3 实例（带 commentAreaEntry），
+          // 否则 index.ts 的 `area instanceof CommentAreaV3` 恒为 false，
+          // ShadowRootEvents.Updated + debounce 这条路径完全没有覆盖。
+          forEachCommentArea: callback => {
+            queryAll(cfg.areas).forEach(element => {
+              const isV3 = element.tagName.toLowerCase() === 'bili-comments'
+              const area = isV3
+                ? new window.coreApis.componentApis.utils.commentApis.CommentAreaV3(element)
+                : { element }
+              window.__dynsnap.areas.push(area)
+              commentAreaManager.commentAreas.push(area)
+              callback(area)
+            })
+          },
           addMenuItem: (item, menu) => addButton(item.element, menu.text, menu.action),
-          commentAreaManager: { commentAreas: [] },
-          CommentAreaV3: class CommentAreaV3 {},
+          commentAreaManager,
+          CommentAreaV3: class CommentAreaV3 {
+            constructor(element) {
+              this.element = element
+              // commentAreaEntry 只需是 EventTarget，事件类型用桩里的 dynsnap-updated
+              this.commentAreaEntry = element
+              this.updatedListeners = []
+              element.addEventListener('dynsnap-updated', () => this.updatedListeners.push(1))
+            }
+          },
         },
       },
     },
